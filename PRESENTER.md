@@ -8,10 +8,14 @@
 2. `start.command` 더블클릭 → 브라우저에서 `http://localhost:8000` 이 열립니다
 3. **Call** 을 눌러 한 번 끝까지 넘겨보세요 (리허설)
 
-> **"Apple could not verify…" 경고**가 뜨면 `Move to Trash` 가 아니라 `Done` 을 누르고,
-> 터미널에서 실행하세요. `⌘ Space` → `터미널` → `cd ` 를 치고 한 칸 띄운 뒤
-> 폴더를 터미널로 드래그 → Enter → `bash serve.sh`
-> 또는 `xattr -dr com.apple.quarantine ` + 폴더 드래그 로 한 번에 풀 수 있습니다.
+> **"Apple could not verify…" 경고**가 뜨면 `Move to Trash` 가 아니라 `Done` 을 누르세요.
+> 그다음 터미널에서 실행하면 경고 자체가 뜨지 않습니다.
+>
+> `⌘ Space` → `터미널` → `bash ` 를 치고 한 칸 띄운 뒤,
+> **`start.command` 파일을 터미널 창으로 끌어다 놓고** Enter.
+>
+> 경고를 아예 없애려면 한 번만: `xattr -dr com.apple.quarantine ` + 폴더 드래그 → Enter.
+> 그 뒤로는 더블클릭이 바로 됩니다.
 
 ## 10분 전 체크
 
