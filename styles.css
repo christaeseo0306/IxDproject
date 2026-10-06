@@ -74,6 +74,7 @@ body[data-backdrop] .desktop::after{
 .gate-note{margin:1.4rem auto 0;max-width:30rem;color:var(--fg-faint);
   font-size:.82rem;line-height:1.6;min-height:1.2em}
 .gate-drop{margin:.4rem 0 0;color:var(--fg-faint);font-size:.78rem}
+.gate-drop.is-ready{color:var(--green)}
 
 /* 드래그 앤 드롭 */
 .drop-veil{
@@ -377,7 +378,7 @@ body[data-state="ended"] .ended{display:flex;animation:fade .3s var(--ease)}
   padding:1rem 1.1rem;border-bottom:1px solid rgba(255,255,255,.08);font-size:.9rem}
 .presenter header button{color:var(--fg-dim);padding:.2rem .4rem}
 .presenter ol{flex:1;overflow:auto;margin:0;padding:.6rem;list-style:none}
-.presenter li{display:flex;gap:.7rem;align-items:center;padding:.6rem .7rem;
+.presenter li{display:flex;gap:.55rem;align-items:center;padding:.5rem .6rem;
   border-radius:9px;cursor:pointer;font-size:.84rem;transition:background .14s}
 .presenter li:hover{background:rgba(255,255,255,.07)}
 .presenter li.is-cur{background:rgba(47,209,89,.17);
@@ -386,8 +387,14 @@ body[data-state="ended"] .ended{display:flex;animation:fade .3s var(--ease)}
 .p-num{font-family:var(--mono);color:var(--fg-faint);font-size:.76rem;min-width:1.6em}
 .p-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .p-part{font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;
-  padding:.16em .45em;border-radius:4px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.2);
-  color:var(--fg-dim)}
+  padding:.3em .5em;border-radius:4px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.2);
+  color:var(--fg-dim);transition:background .14s}
+.p-part:hover{background:rgba(255,255,255,.14)}
+.p-move{display:flex;flex-direction:column;gap:1px}
+.p-move button{width:19px;height:15px;border-radius:4px;line-height:1;font-size:.62rem;
+  color:var(--fg-faint);background:rgba(255,255,255,.07);transition:background .14s,color .14s}
+.p-move button:hover:not(:disabled){background:rgba(255,255,255,.2);color:var(--fg)}
+.p-move button:disabled{opacity:.25;cursor:default}
 .p-part.cctv{color:var(--rec);box-shadow:inset 0 0 0 1px rgba(255,45,32,.5)}
 .p-mute{font-size:.6rem;letter-spacing:.06em;padding:.16em .42em;border-radius:4px;
   color:#ffd79a;box-shadow:inset 0 0 0 1px rgba(255,159,10,.5)}
@@ -398,6 +405,12 @@ body[data-state="ended"] .ended{display:flex;animation:fade .3s var(--ease)}
   font-size:.82rem;font-weight:550;transition:background .14s}
 .restart-btn:hover{background:rgba(255,255,255,.18)}
 .restart-btn:active{transform:scale(.985)}
+.clear-btn{margin-top:-.5rem;background:transparent;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);color:var(--fg-dim);font-weight:500}
+.clear-btn:hover{background:rgba(255,59,48,.14);color:#ff8a80;
+  box-shadow:inset 0 0 0 1px rgba(255,59,48,.4)}
+.clear-btn[hidden]{display:none}
+.keys-hint{width:100%;color:rgba(245,245,247,.26);font-size:.68rem;margin-top:.1rem}
 .keys{display:flex;flex-wrap:wrap;gap:.5rem .9rem;color:var(--fg-faint);font-size:.72rem}
 
 /* ══════════════ 경고 배너 ══════════════ */

@@ -52,6 +52,7 @@ const S = {
   gen: 0,
   primed: false,
   objectUrls: [],
+  stored: 0,
   audioCtx: null,
   ringTimer: null,
 };
@@ -86,7 +87,7 @@ function normalize(json, source) {
     clips: (json.clips || []).map((c, i) => ({
       src: c.src || '',
       part: c.part === 'cctv' ? 'cctv' : 'call',
-      label: c.label || `Clip ${String(i + 1).padStart(2, '0')}`,
+      label: c.label || `Clip ${String(i).padStart(2, '0')}`,
       cam: c.cam || `CAM ${String((i % 8) + 1).padStart(2, '0')}`,
       location: c.location || '',
       loop: !!c.loop,
@@ -94,6 +95,7 @@ function normalize(json, source) {
       date: c.date || '',
     })),
     source,
+    manifestClips: [],
   };
 }
 
@@ -179,6 +181,88 @@ function blip(up = true) {
   (up ? [659.3, 880] : [587.3, 392]).forEach((f, i) => tone(f, i * 0.1, 0.35, 0.09));
 }
 
+/* ══════════════ 저장소 ══════════════
+   드롭한 영상을 IndexedDB 에 보관합니다. 새로고침하거나 브라우저를 다시 열어도
+   같은 순서로 그대로 재생됩니다. ── */
+
+const DB_NAME = 'virtual-facetime';
+const STORE = 'sequence';
+
+function idb() {
+  return new Promise((resolve, reject) => {
+    if (!window.indexedDB) return reject(new Error('no indexedDB'));
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function idbRun(mode, fn) {
+  return idb().then((db) => new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, mode);
+    const req = fn(tx.objectStore(STORE));
+    tx.oncomplete = () => { db.close(); resolve(req?.result); };
+    tx.onerror = () => { db.close(); reject(tx.error); };
+    tx.onabort = () => { db.close(); reject(tx.error); };
+  }));
+}
+
+/* 현재 재생 목록 중 파일을 가진 클립을 저장합니다 */
+async function saveSequence() {
+  const rows = S.clips
+    .filter((c) => c._blob)
+    .map((c) => ({
+      name: c._name, blob: c._blob, part: c.part, label: c.label,
+      cam: c.cam, location: c.location,
+    }));
+  try {
+    if (!rows.length) return idbRun('readwrite', (st) => st.delete('clips'));
+    await idbRun('readwrite', (st) => st.put(rows, 'clips'));
+    S.stored = rows.length;
+  } catch (err) {
+    S.stored = 0;
+    toast(err?.name === 'QuotaExceededError'
+      ? 'Not enough browser storage — put the files in videos/ instead'
+      : 'Could not save to this browser');
+  }
+}
+
+async function restoreSequence() {
+  let rows;
+  try { rows = await idbRun('readonly', (st) => st.get('clips')); }
+  catch (_) { return false; }
+  if (!Array.isArray(rows) || !rows.length) return false;
+  S.objectUrls.forEach((u) => URL.revokeObjectURL(u));
+  S.objectUrls = [];
+  S.clips = rows.map((r) => {
+    const url = URL.createObjectURL(r.blob);
+    S.objectUrls.push(url);
+    return {
+      src: url, part: r.part === 'cctv' ? 'cctv' : 'call', label: r.label,
+      cam: r.cam, location: r.location || '', loop: false, fit: '', date: '',
+      _blob: r.blob, _name: r.name,
+    };
+  });
+  S.cfg.clips = S.clips;
+  S.stored = rows.length;
+  return true;
+}
+
+async function clearSequence() {
+  try { await idbRun('readwrite', (st) => st.delete('clips')); } catch (_) { /* 이미 없음 */ }
+  S.objectUrls.forEach((u) => URL.revokeObjectURL(u));
+  S.objectUrls = [];
+  S.stored = 0;
+  S.clips = S.cfg.manifestClips.slice();
+  S.cfg.clips = S.clips;
+  S.idx = -1;
+  renderPresenter();
+  updateGateNote();
+  restart({ silent: true });
+  toast('Cleared — using videos/ again');
+}
+
 /* ══════════════ 드래그 앤 드롭 ══════════════
    폴더를 만지지 않고 영상 파일(또는 videos 폴더)을 창에 끌어다 놓으면
    파일명 순서대로 재생 목록이 만들어집니다. ── */
@@ -246,7 +330,10 @@ function loadDroppedFiles(files) {
     S.objectUrls.push(url);
     let part = p.part;
     if (!part) part = (Number.isFinite(cctvFrom) && p.order >= cctvFrom) ? 'cctv' : 'call';
-    const clip = { src: url, part, label: p.label, loop: false, fit: '', date: '' };
+    const clip = {
+      src: url, part, label: p.label, loop: false, fit: '', date: '',
+      _blob: p.file, _name: p.file.name,
+    };
     clip.cam = part === 'cctv'
       ? (p.cam || `CAM ${String((cam++ % 8) + 1).padStart(2, '0')}`)
       : `CAM ${String((cam % 8) + 1).padStart(2, '0')}`;
@@ -257,9 +344,25 @@ function loadDroppedFiles(files) {
 
   const n = S.clips.filter((c) => c.part === 'cctv').length;
   $('#warn').hidden = true;
+  S.idx = -1;
   renderPresenter();
+  updateGateNote();
+  saveSequence();
   toast(`${S.clips.length} clips loaded — ${S.clips.length - n} call, ${n} CCTV`);
   return true;
+}
+
+/* 재생 목록이 바뀌면 화면 안내도 같이 갱신합니다 */
+function updateGateNote() {
+  const el = $('#gate-ready');
+  if (!el) return;
+  if (S.stored) {
+    el.textContent = `${S.stored} videos saved in this browser — ready to go`;
+    el.classList.add('is-ready');
+  } else {
+    el.textContent = 'or drag your video files here';
+    el.classList.remove('is-ready');
+  }
 }
 
 function wireDropZone() {
@@ -278,6 +381,7 @@ function wireDropZone() {
   }));
   document.addEventListener('drop', async (e) => {
     if (!droppable()) return;
+    if (!e.dataTransfer?.types?.includes('Files')) return;   // 목록 순서 변경은 제외
     stop(e);
     body.classList.remove('dropping');
     const files = await filesFromDrop(e.dataTransfer);
@@ -351,7 +455,7 @@ function resolveSrc(clip) {
 function setPlaceholder(clip, i, on) {
   const ph = $('#placeholder');
   if (!on) { ph.hidden = true; return; }
-  ph.querySelector('.ph-index').textContent = String(i + 1).padStart(2, '0');
+  ph.querySelector('.ph-index').textContent = pad(i);
   ph.querySelector('.ph-label').textContent = clip.label;
   ph.querySelector('.ph-note').textContent = clip.src
     ? `Could not load — ${clip.src}`
@@ -573,15 +677,53 @@ function renderPresenter() {
   S.clips.forEach((c, i) => {
     const li = document.createElement('li');
     li.className = (i === S.idx ? 'is-cur ' : '') + (c.src ? '' : 'is-missing');
-    li.innerHTML = `<span class="p-num">${pad(i + 1)}</span>`
+    li.innerHTML = `<span class="p-num">${pad(i)}</span>`
       + '<span class="p-label"></span>'
       + (c.noAudio ? '<span class="p-mute" title="No audio track">NO AUDIO</span>' : '')
-      + `<span class="p-part ${c.part}">${c.part.toUpperCase()}</span>`;
+      + `<button class="p-part ${c.part}" type="button" title="Switch part">${c.part.toUpperCase()}</button>`
+      + '<span class="p-move">'
+      +   `<button type="button" title="Move up"${i === 0 ? ' disabled' : ''}>↑</button>`
+      +   `<button type="button" title="Move down"${i === S.clips.length - 1 ? ' disabled' : ''}>↓</button>`
+      + '</span>';
     li.querySelector('.p-label').textContent = c.label;
     li.addEventListener('click', () => { if (state() !== 'gate') goto(i); });
+    li.querySelector('.p-part').addEventListener('click', (e) => {
+      e.stopPropagation(); setPart(i, c.part === 'cctv' ? 'call' : 'cctv');
+    });
+    const [up, down] = li.querySelectorAll('.p-move button');
+    up.addEventListener('click', (e) => { e.stopPropagation(); move(i, -1); });
+    down.addEventListener('click', (e) => { e.stopPropagation(); move(i, 1); });
     list.appendChild(li);
   });
+  $('#presenter-clear').hidden = !S.stored;
   list.querySelector('.is-cur')?.scrollIntoView({ block: 'nearest' });
+}
+
+/* 현재 보고 있는 클립을 놓치지 않도록 인덱스를 따라 옮깁니다 */
+function reindex(from, to) {
+  if (S.idx === from) S.idx = to;
+  else if (from < S.idx && to >= S.idx) S.idx -= 1;
+  else if (from > S.idx && to <= S.idx) S.idx += 1;
+}
+
+function move(i, dir) {
+  const j = i + dir;
+  if (j < 0 || j >= S.clips.length) return;
+  const [c] = S.clips.splice(i, 1);
+  S.clips.splice(j, 0, c);
+  reindex(i, j);
+  S.cfg.clips = S.clips;
+  renderPresenter();
+  saveSequence();
+}
+
+function setPart(i, part) {
+  const c = S.clips[i];
+  c.part = part;
+  if (part === 'cctv' && !c.location) c.location = (c.label || c.cam).toUpperCase();
+  if (i === S.idx) { setState(part === 'cctv' ? 'cctv' : 'live'); bodyPart(c); }
+  renderPresenter();
+  saveSequence();
 }
 
 function togglePresenter() {
@@ -623,6 +765,7 @@ document.addEventListener('keydown', (e) => {
   }
   if (st === 'ended') {
     if (NEXT_KEYS.includes(k) || k === 'r' || k === 'R') { e.preventDefault(); restart({ silent: true }); }
+    else if (k === 'h' || k === 'H' || k === '?') { e.preventDefault(); togglePresenter(); }
     return;
   }
 
@@ -635,12 +778,12 @@ document.addEventListener('keydown', (e) => {
     case 'm': case 'M': e.preventDefault(); toggleMute(); break;
     case 'c': case 'C': e.preventDefault(); toggleCam(); break;
     case 'r': case 'R': e.preventDefault(); restart(); break;
-    case '0': e.preventDefault(); replay(); break;
+    case '.': case ',': e.preventDefault(); replay(); break;
     case 'h': case 'H': case '?': e.preventDefault(); togglePresenter(); break;
     case 'Home': e.preventDefault(); goto(0); break;
     case 'End': e.preventDefault(); goto(S.clips.length - 1); break;
     default:
-      if (/^[1-9]$/.test(k)) { e.preventDefault(); goto(Number(k) - 1); }
+      if (/^[0-9]$/.test(k)) { e.preventDefault(); goto(Number(k)); }   // 00 → 첫 클립
   }
 });
 
@@ -665,6 +808,7 @@ $('#btn-shutter').addEventListener('click', stop(toggleFull));
 $('#restart-btn').addEventListener('click', stop(() => restart({ silent: true })));
 $('#presenter-restart').addEventListener('click', () => restart());
 $('#presenter-close').addEventListener('click', togglePresenter);
+$('#presenter-clear').addEventListener('click', clearSequence);
 
 /* 클립이 끝나면 마지막 프레임에서 멈추고 방향키를 기다립니다 */
 players.forEach((v) => {
@@ -702,7 +846,12 @@ players.forEach((v) => {
   if (!S.cfg.options.showSelfInCctv) body.classList.add('no-cctv-self');
   document.documentElement.style.setProperty('--fit', S.cfg.options.fit);
 
+  S.cfg.manifestClips = S.clips.slice();
+  await restoreSequence();                 // 전에 넣어둔 영상이 있으면 그대로 이어서
+  S.clips = S.cfg.clips;
+
   renderPresenter();
+  updateGateNote();
   wireDropZone();
   setInterval(tick, 250);
 
@@ -715,6 +864,7 @@ players.forEach((v) => {
   } else if (S.cfg.source === 'videos.sample.json') {
     warns.push('Running on the sample manifest (<code>videos.sample.json</code>). Add your real videos and generate <code>videos.json</code>.');
   }
+  if (S.stored) warns.length = 0;          // 브라우저에 저장된 영상으로 재생 중
   if (warns.length) { $('#warn').innerHTML = warns.join('<br>'); $('#warn').hidden = false; }
 
   window.__ft = S;   // 디버그용

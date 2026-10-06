@@ -23,7 +23,7 @@
     <p class="gate-sub">Start a FaceTime call with <span id="gate-name">—</span></p>
     <button id="gate-btn" class="gate-btn" type="button">Call</button>
     <p id="gate-note" class="gate-note"></p>
-    <p class="gate-drop">or drag your video files here</p>
+    <p id="gate-ready" class="gate-drop">or drag your video files here</p>
   </div>
 </section>
 
@@ -43,7 +43,7 @@
     </div>
 
     <div id="placeholder" class="placeholder" hidden>
-      <div class="ph-index">01</div>
+      <div class="ph-index">00</div>
       <div class="ph-label">Clip title</div>
       <div class="ph-note">No video files found in videos/</div>
     </div>
@@ -150,12 +150,13 @@
   <ol id="presenter-list"></ol>
   <footer>
     <button id="presenter-restart" class="restart-btn" type="button">Restart from the beginning</button>
+    <button id="presenter-clear" class="restart-btn clear-btn" type="button" hidden>Clear saved videos</button>
     <div class="keys">
       <span><span class="kbd">→</span> Next</span><span><span class="kbd">←</span> Back</span>
       <span><span class="kbd">R</span> Restart</span><span><span class="kbd">F</span> Fullscreen</span>
       <span><span class="kbd">M</span> Mute</span><span><span class="kbd">C</span> Camera</span>
       <span><span class="kbd">H</span> Panel</span><span><span class="kbd">Esc</span> End</span>
-      <span><span class="kbd">0</span> Replay</span><span><span class="kbd">1</span>–<span class="kbd">9</span> Jump</span>
+      <span><span class="kbd">.</span> Replay</span><span><span class="kbd">0</span>–<span class="kbd">9</span> Jump</span>
     </div>
   </footer>
 </aside>
