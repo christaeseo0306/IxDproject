@@ -372,6 +372,12 @@ body[data-state="ended"] .ended{display:flex;animation:fade .3s var(--ease)}
   color:var(--fg-dim)}
 .p-part.cctv{color:var(--rec);box-shadow:inset 0 0 0 1px rgba(255,45,32,.5)}
 .presenter footer{padding:.9rem 1.1rem;border-top:1px solid rgba(255,255,255,.08)}
+.restart-btn{
+  width:100%;margin-bottom:.9rem;padding:.6rem;border-radius:9px;
+  background:rgba(255,255,255,.1);box-shadow:inset 0 0 0 1px rgba(255,255,255,.16);
+  font-size:.82rem;font-weight:550;transition:background .14s}
+.restart-btn:hover{background:rgba(255,255,255,.18)}
+.restart-btn:active{transform:scale(.985)}
 .keys{display:flex;flex-wrap:wrap;gap:.5rem .9rem;color:var(--fg-faint);font-size:.72rem}
 
 /* ══════════════ 경고 배너 ══════════════ */

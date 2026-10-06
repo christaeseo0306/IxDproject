@@ -336,19 +336,29 @@ function endCall() {
   body.classList.remove('hide-cursor');
 }
 
-function restart() {
+/* 어느 상태에서든 맨 처음(발신 화면)으로 되돌립니다. */
+function restart(opts = {}) {
   S.idx = -1; S.callStart = 0; S.gen++;
   players.forEach((v) => {
     v.classList.remove('is-active');
+    v.pause();
     v.removeAttribute('src'); delete v.dataset.src; v.load();
   });
   players[0].classList.add('is-active');
   S.cur = 0;
   body.dataset.part = 'call';
+  document.documentElement.style.setProperty('--fit', S.cfg.options.fit);
+  $('#glitch').hidden = true;
+  $('#pill-timer').textContent = '00:00';
   setPlaceholder({}, 0, false);
+  clearTimeout(uiTimer);
+  body.classList.remove('ui-visible', 'hide-cursor');
+  $('#presenter').hidden = true;
   renderPresenter();
   setState('calling');
+  $('#status-text').textContent = '연결 중';
   startRing();
+  if (!opts.silent) toast('처음부터 다시 시작');
 }
 
 /* ══════════════ 시계 ══════════════ */
@@ -444,10 +454,11 @@ document.addEventListener('keydown', (e) => {
     if (NEXT_KEYS.includes(k)) { e.preventDefault(); connect(); }
     else if (k === 'Escape') { e.preventDefault(); endCall(); }
     else if (k === 'c' || k === 'C') { e.preventDefault(); toggleCam(); }
+    else if (k === 'r' || k === 'R') { e.preventDefault(); restart(); }
     return;
   }
   if (st === 'ended') {
-    if (NEXT_KEYS.includes(k) || k === 'r' || k === 'R') { e.preventDefault(); restart(); }
+    if (NEXT_KEYS.includes(k) || k === 'r' || k === 'R') { e.preventDefault(); restart({ silent: true }); }
     return;
   }
 
@@ -459,7 +470,8 @@ document.addEventListener('keydown', (e) => {
     case 'f': case 'F': e.preventDefault(); toggleFull(); break;
     case 'm': case 'M': e.preventDefault(); toggleMute(); break;
     case 'c': case 'C': e.preventDefault(); toggleCam(); break;
-    case 'r': case 'R': e.preventDefault(); replay(); break;
+    case 'r': case 'R': e.preventDefault(); restart(); break;
+    case '0': e.preventDefault(); replay(); break;
     case 'h': case 'H': case '?': e.preventDefault(); togglePresenter(); break;
     case 'Home': e.preventDefault(); goto(0); break;
     case 'End': e.preventDefault(); goto(S.clips.length - 1); break;
@@ -486,7 +498,8 @@ $('#btn-mute').addEventListener('click', stop(toggleMute));
 $('#btn-more').addEventListener('click', stop(togglePresenter));
 $('#btn-end').addEventListener('click', stop(endCall));
 $('#btn-shutter').addEventListener('click', stop(toggleFull));
-$('#restart-btn').addEventListener('click', stop(restart));
+$('#restart-btn').addEventListener('click', stop(() => restart({ silent: true })));
+$('#presenter-restart').addEventListener('click', () => restart());
 $('#presenter-close').addEventListener('click', togglePresenter);
 
 /* 클립이 끝나면 마지막 프레임에서 멈추고 방향키를 기다립니다 */
