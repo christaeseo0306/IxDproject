@@ -54,8 +54,15 @@ if [ "$COMPRESS" = "1" ]; then
   fi
 fi
 
-# 2) 재생 목록 갱신
-command -v node >/dev/null 2>&1 && node tools/build-manifest.mjs --if-changed >/dev/null 2>&1 || true
+# 2) 재생 목록 갱신 — 같은 번호가 겹치면 여기서 멈춥니다
+if command -v node >/dev/null 2>&1; then
+  if ! node tools/build-manifest.mjs --if-changed; then
+    echo
+    echo "위 문제를 정리한 뒤 다시 실행해주세요."
+    exit 1
+  fi
+  echo
+fi
 
 # 3) 용량 점검
 vids=(videos/*.mp4 videos/*.webm videos/*.mov videos/*.m4v)

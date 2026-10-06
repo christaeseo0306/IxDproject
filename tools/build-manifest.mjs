@@ -88,6 +88,25 @@ parsed.sort((a, b) =>
   a.order - b.order || a.file.localeCompare(b.file, 'ko', { numeric: true })
 );
 
+// 같은 번호가 두 번 나오면 멈춥니다 — Finder 로 인코딩하면 원본이 함께 남습니다
+const byNo = new Map();
+for (const p of parsed) {
+  if (!Number.isFinite(p.order)) continue;
+  if (!byNo.has(p.order)) byNo.set(p.order, []);
+  byNo.get(p.order).push(p.file);
+}
+const dupes = [...byNo.entries()].filter(([, files]) => files.length > 1);
+if (dupes.length) {
+  console.error('✗ 같은 번호의 영상이 여러 개 있습니다. 그대로 두면 같은 장면이 두 번 재생됩니다.\n');
+  for (const [no, files] of dupes) {
+    console.error(`  ${String(no).padStart(2, '0')}번`);
+    for (const f of files) console.error(`    ${dir}/${f}`);
+  }
+  console.error('\n  남길 것 하나만 두고 나머지는 지우거나 다른 폴더로 옮겨주세요.');
+  console.error('  (Finder 로 인코딩하면 원본 .mp4 와 변환본 .m4v 가 같이 남습니다)');
+  process.exit(1);
+}
+
 // 파트 토큰이 전혀 없으면 --cctv-from 으로 가른다
 const anyPart = parsed.some((p) => p.part);
 if (!anyPart && cctvFrom == null) {
