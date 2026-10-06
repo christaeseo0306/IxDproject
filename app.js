@@ -54,6 +54,10 @@ const S = {
   ringTimer: null,
 };
 
+// 임베드 환경에서 body 속성이 유실돼도 동작하도록 초기 상태를 보장합니다
+if (!body.dataset.state) body.dataset.state = 'gate';
+if (!body.dataset.part) body.dataset.part = 'call';
+
 const players = [$('#vA'), $('#vB')];
 const selfFeeds = [$('#self-main'), $('#self-pip'), $('#self-cctv')];
 

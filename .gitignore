@@ -8,3 +8,7 @@ videos.json
 
 # 전달용 패키징 산출물
 *.zip
+
+# 녹화/데모 산출물
+/demo.mp4
+/embed-test.html
