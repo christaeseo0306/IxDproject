@@ -15,3 +15,6 @@ videos.json
 
 # git 번들 (히스토리 전달용)
 *.bundle
+
+# 배포 대상 저장소 주소 (각자 폴더에만 둡니다)
+.repo-url
