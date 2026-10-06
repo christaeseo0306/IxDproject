@@ -12,7 +12,7 @@ const body = document.body;
 
 /* ── 기본값 (videos.json 이 덮어씀) ───────────────────────────── */
 const DEFAULTS = {
-  caller: { name: '가상 인물', avatar: '', initials: '' },
+  caller: { name: 'Unknown', avatar: '', initials: '' },
   options: {
     fit: 'cover',              // cover | contain
     glitchMs: 700,             // CCTV 진입 글리치 길이
@@ -27,13 +27,13 @@ const DEFAULTS = {
 
 /* 영상이 아직 없을 때 쓰는 리허설용 더미 시퀀스 */
 const DEMO_CLIPS = [
-  { part: 'call', label: '통화 연결 — 첫 인사' },
-  { part: 'call', label: '자기소개' },
-  { part: 'call', label: '오늘 하루 이야기' },
-  { part: 'call', label: '질문을 건네다' },
-  { part: 'cctv', label: '아침', cam: 'CAM 03', location: 'LIVING ROOM' },
-  { part: 'cctv', label: '오후', cam: 'CAM 05', location: 'STUDIO' },
-  { part: 'cctv', label: '밤', cam: 'CAM 01', location: 'ENTRANCE' },
+  { part: 'call', label: 'Connecting — first hello' },
+  { part: 'call', label: 'Introduction' },
+  { part: 'call', label: 'How the day went' },
+  { part: 'call', label: 'Asking a question' },
+  { part: 'cctv', label: 'Morning', cam: 'CAM 03', location: 'LIVING ROOM' },
+  { part: 'cctv', label: 'Afternoon', cam: 'CAM 05', location: 'STUDIO' },
+  { part: 'cctv', label: 'Night', cam: 'CAM 01', location: 'ENTRANCE' },
 ];
 
 /* ── 상태 ─────────────────────────────────────────────────────── */
@@ -85,7 +85,7 @@ function normalize(json, source) {
     clips: (json.clips || []).map((c, i) => ({
       src: c.src || '',
       part: c.part === 'cctv' ? 'cctv' : 'call',
-      label: c.label || `클립 ${String(i + 1).padStart(2, '0')}`,
+      label: c.label || `Clip ${String(i + 1).padStart(2, '0')}`,
       cam: c.cam || `CAM ${String((i % 8) + 1).padStart(2, '0')}`,
       location: c.location || '',
       loop: !!c.loop,
@@ -100,7 +100,7 @@ function normalize(json, source) {
 async function initCamera() {
   if (!navigator.mediaDevices?.getUserMedia) {
     body.classList.add('cam-off'); S.camOn = false;
-    return { ok: false, reason: '이 브라우저는 카메라 API를 지원하지 않습니다.' };
+    return { ok: false, reason: 'This browser does not support the camera API.' };
   }
   try {
     S.stream = await navigator.mediaDevices.getUserMedia({
@@ -117,14 +117,14 @@ async function initCamera() {
     return {
       ok: false,
       reason: err?.name === 'NotAllowedError'
-        ? '카메라 권한이 거부되었습니다. 프리뷰 없이 진행합니다.'
-        : '카메라를 찾을 수 없습니다. 프리뷰 없이 진행합니다.',
+        ? 'Camera permission denied — continuing without preview.'
+        : 'No camera found — continuing without preview.',
     };
   }
 }
 
 function toggleCam() {
-  if (!S.stream) return toast('카메라를 사용할 수 없습니다');
+  if (!S.stream) return toast('Camera unavailable');
   S.camOn = !S.camOn;
   S.stream.getVideoTracks().forEach((t) => { t.enabled = S.camOn; });
   body.classList.toggle('cam-off', !S.camOn);
@@ -135,7 +135,7 @@ function toggleMute() {
   S.muted = !S.muted;
   players.forEach((v) => { v.muted = S.muted; v.volume = 1; });
   $('#btn-mute').classList.toggle('is-off', S.muted);
-  toast(S.muted ? '음소거' : '음소거 해제');
+  toast(S.muted ? 'Muted' : 'Unmuted');
 }
 
 /* ══════════════ 벨소리 (WebAudio · 외부 파일 없음) ══════════════ */
@@ -215,15 +215,16 @@ function hasAudioTrack(v) {
 function auditAudio(v, clip, gen) {
   setTimeout(() => {
     if (gen !== S.gen || !clip.src) return;
+    if (v.error || v.readyState < 2) return;   // 파일 문제는 플레이스홀더가 알립니다
     if (v.paused && !v.ended) {
-      toast('화면을 클릭하면 소리와 함께 재생됩니다');
+      toast('Click the screen to play with sound');
       return;
     }
     if (S.muted) return;                  // 발표자가 직접 끈 경우
     if (hasAudioTrack(v) === false && !clip.noAudio) {
       clip.noAudio = true;                // 발표자 패널에 표시
       renderPresenter();
-      toast(`'${clip.label}' 에 오디오 트랙이 없습니다`);
+      toast(`No audio track in '${clip.label}'`);
     }
   }, 1400);
 }
@@ -245,8 +246,8 @@ function setPlaceholder(clip, i, on) {
   ph.querySelector('.ph-index').textContent = String(i + 1).padStart(2, '0');
   ph.querySelector('.ph-label').textContent = clip.label;
   ph.querySelector('.ph-note').textContent = clip.src
-    ? `영상을 불러올 수 없습니다 — ${clip.src}`
-    : 'videos/ 폴더에 영상을 넣고 node tools/build-manifest.mjs 를 실행하세요';
+    ? `Could not load — ${clip.src}`
+    : 'Drop your videos into videos/ and run: node tools/build-manifest.mjs';
   ph.hidden = false;
 }
 
@@ -272,7 +273,7 @@ function once(el, type, ms) {
 /* 클립을 띄웁니다. 로딩이 늦어도 입력을 막지 않습니다. */
 async function goto(i, opts = {}) {
   if (i < 0) return;
-  if (i >= S.clips.length) { toast('마지막 클립입니다'); return; }
+  if (i >= S.clips.length) { toast('Last clip'); return; }
 
   const gen = ++S.gen;
   const clip = S.clips[i];
@@ -354,19 +355,19 @@ function next() { goto(S.idx + 1); }
 function prev() { goto(S.idx - 1); }
 function replay() {
   const v = players[S.cur];
-  if (v.currentSrc) { v.currentTime = 0; v.play().catch(() => {}); toast('클립 다시 재생'); }
+  if (v.currentSrc) { v.currentTime = 0; v.play().catch(() => {}); toast('Replaying clip'); }
 }
 
 /* ══════════════ 통화 흐름 ══════════════ */
 async function startCalling() {
   $('#gate-btn').disabled = true;
-  $('#gate-note').textContent = '카메라 권한을 확인하는 중…';
+  $('#gate-note').textContent = 'Checking camera permission…';
   audio();                                     // 사용자 제스처로 오디오 잠금 해제
   const cam = await initCamera();
   await primeMedia();                     // 제스처가 살아 있는 동안 소리 잠금 해제
   $('#gate').classList.remove('is-on');
   setState('calling');
-  $('#status-text').textContent = '연결 중';
+  $('#status-text').textContent = 'Connecting';
   if (!cam.ok) toast(cam.reason);
   if (S.cfg.options.startFullscreen) enterFull();
   startRing();
@@ -410,9 +411,9 @@ function restart(opts = {}) {
   $('#presenter').hidden = true;
   renderPresenter();
   setState('calling');
-  $('#status-text').textContent = '연결 중';
+  $('#status-text').textContent = 'Connecting';
   startRing();
-  if (!opts.silent) toast('처음부터 다시 시작');
+  if (!opts.silent) toast('Restarted');
 }
 
 /* ══════════════ 시계 ══════════════ */
@@ -466,7 +467,7 @@ function renderPresenter() {
     li.className = (i === S.idx ? 'is-cur ' : '') + (c.src ? '' : 'is-missing');
     li.innerHTML = `<span class="p-num">${pad(i + 1)}</span>`
       + '<span class="p-label"></span>'
-      + (c.noAudio ? '<span class="p-mute" title="오디오 트랙 없음">무음</span>' : '')
+      + (c.noAudio ? '<span class="p-mute" title="No audio track">NO AUDIO</span>' : '')
       + `<span class="p-part ${c.part}">${c.part.toUpperCase()}</span>`;
     li.querySelector('.p-label').textContent = c.label;
     li.addEventListener('click', () => { if (state() !== 'gate') goto(i); });
@@ -486,7 +487,7 @@ function enterFull() { document.documentElement.requestFullscreen?.().catch(() =
 function toggleFull() {
   if (document.fullscreenElement) document.exitFullscreen?.();
   else document.documentElement.requestFullscreen?.()
-    .catch(() => toast('전체화면을 사용할 수 없습니다'));
+    .catch(() => toast('Fullscreen unavailable'));
 }
 document.addEventListener('fullscreenchange', () => {
   body.classList.toggle('is-full', !!document.fullscreenElement);
@@ -598,12 +599,12 @@ players.forEach((v) => {
 
   const warns = [];
   if (!window.isSecureContext) {
-    warns.push('보안 컨텍스트가 아니라 카메라를 쓸 수 없습니다. <code>./serve.sh</code> 로 localhost 에서 열거나 HTTPS 로 접속하세요.');
+    warns.push('Not a secure context, so the camera is blocked. Open it from localhost with <code>./serve.sh</code>, or over HTTPS.');
   }
   if (S.cfg.source === 'demo') {
-    warns.push('매니페스트를 찾지 못해 <strong>리허설 모드</strong>로 실행 중입니다. <code>videos/</code> 에 영상을 넣고 <code>node tools/build-manifest.mjs</code> 를 실행하세요.');
+    warns.push('No manifest found — running in <strong>rehearsal mode</strong>. Drop your videos into <code>videos/</code> and run <code>node tools/build-manifest.mjs</code>.');
   } else if (S.cfg.source === 'videos.sample.json') {
-    warns.push('예시 매니페스트(<code>videos.sample.json</code>)로 실행 중입니다. 실제 영상을 넣고 <code>videos.json</code> 을 생성하세요.');
+    warns.push('Running on the sample manifest (<code>videos.sample.json</code>). Add your real videos and generate <code>videos.json</code>.');
   }
   if (warns.length) { $('#warn').innerHTML = warns.join('<br>'); $('#warn').hidden = false; }
 

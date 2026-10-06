@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -20,8 +20,8 @@
       <svg viewBox="0 0 100 100"><rect width="100" height="100" rx="24" fill="#34c759"/><path d="M22 36h38a6 6 0 016 6v16a6 6 0 01-6 6H22a6 6 0 01-6-6V42a6 6 0 016-6zm50 10l14-10v28L72 54z" fill="#fff"/></svg>
     </div>
     <h1 class="gate-title">FaceTime</h1>
-    <p class="gate-sub">클릭하면 <span id="gate-name">—</span> 님에게 영상통화를 겁니다</p>
-    <button id="gate-btn" class="gate-btn" type="button">통화 걸기</button>
+    <p class="gate-sub">Start a FaceTime call with <span id="gate-name">—</span></p>
+    <button id="gate-btn" class="gate-btn" type="button">Call</button>
     <p id="gate-note" class="gate-note"></p>
   </div>
 </section>
@@ -38,13 +38,13 @@
     <video id="self-main" class="self-main self-feed" autoplay muted playsinline></video>
     <div class="self-main-off">
       <svg viewBox="0 0 24 24"><path d="M3 7.5A1.5 1.5 0 014.5 6h7.3L21 15.2V8.8L17 12M2 2l20 20" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
-      <span>카메라 꺼짐</span>
+      <span>Camera off</span>
     </div>
 
     <div id="placeholder" class="placeholder" hidden>
       <div class="ph-index">01</div>
-      <div class="ph-label">클립 제목</div>
-      <div class="ph-note">videos/ 폴더에 영상 파일이 없습니다</div>
+      <div class="ph-label">Clip title</div>
+      <div class="ph-note">No video files found in videos/</div>
     </div>
 
     <div id="glitch" class="glitch" hidden>
@@ -88,14 +88,14 @@
     </div>
     <span id="pill-timer" class="pill-timer mono">00:00</span>
   </div>
-  <button id="btn-shutter" class="shutter" type="button" aria-label="효과"></button>
+  <button id="btn-shutter" class="shutter" type="button" aria-label="Effects"></button>
 
   <!-- ── 셀프뷰 PiP (연결 후) ── -->
   <div id="selfview" class="selfview">
     <video id="self-pip" class="self-feed" autoplay muted playsinline></video>
     <div class="self-off">
       <svg viewBox="0 0 24 24"><path d="M3 7.5A1.5 1.5 0 014.5 6h7.3L21 15.2V8.8L17 12M2 2l20 20" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
-      <span>카메라 꺼짐</span>
+      <span>Camera off</span>
     </div>
     <span class="mini mini-l" aria-hidden="true">
       <svg viewBox="0 0 24 24"><path d="M5 19V5h9M5 12h7" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg>
@@ -107,34 +107,34 @@
 
   <!-- ── 컨트롤 (우하단) ── -->
   <div id="controls" class="controls">
-    <button class="cb cb-video" id="btn-cam" type="button" aria-label="카메라">
+    <button class="cb cb-video" id="btn-cam" type="button" aria-label="Camera">
       <svg class="i-on" viewBox="0 0 24 24"><path d="M3 7.5A1.5 1.5 0 014.5 6h9A1.5 1.5 0 0115 7.5v9A1.5 1.5 0 0113.5 18h-9A1.5 1.5 0 013 16.5v-9zM17 12l4-3.2v6.4L17 12z" fill="currentColor"/></svg>
       <svg class="i-off" viewBox="0 0 24 24"><path d="M3 7.5A1.5 1.5 0 014.5 6h7.3L21 15.2V8.8L17 12M2 2l20 20" stroke="currentColor" stroke-width="1.9" fill="none" stroke-linecap="round"/></svg>
     </button>
-    <button class="cb cb-mic" id="btn-mute" type="button" aria-label="마이크">
+    <button class="cb cb-mic" id="btn-mute" type="button" aria-label="Microphone">
       <svg class="i-on" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M6 11a6 6 0 0012 0M12 17.5V21" stroke="currentColor" stroke-width="1.9" fill="none" stroke-linecap="round"/></svg>
       <svg class="i-off" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M6 11a6 6 0 0012 0M12 17.5V21M3.5 3.5l17 17" stroke="currentColor" stroke-width="1.9" fill="none" stroke-linecap="round"/></svg>
     </button>
-    <button class="cb cb-more" id="btn-more" type="button" aria-label="더 보기">
+    <button class="cb cb-more" id="btn-more" type="button" aria-label="More">
       <svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.7" fill="currentColor"/><circle cx="12" cy="12" r="1.7" fill="currentColor"/><circle cx="18" cy="12" r="1.7" fill="currentColor"/></svg>
     </button>
-    <button class="cb cb-end" id="btn-end" type="button" aria-label="통화 종료">
+    <button class="cb cb-end" id="btn-end" type="button" aria-label="End call">
       <svg viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="currentColor" stroke-width="2.3" fill="none" stroke-linecap="round"/></svg>
     </button>
   </div>
 
   <!-- 발신 중 상태 표시 -->
   <div id="status" class="status">
-    <span id="status-text">연결 중…</span>
-    <span id="status-hint" class="status-hint"><span class="kbd">→</span> 통화 시작</span>
+    <span id="status-text">Connecting</span>
+    <span id="status-hint" class="status-hint"><span class="kbd">→</span> Start call</span>
   </div>
 
   <!-- 통화 종료 오버레이 -->
   <div id="ended" class="ended">
-    <p class="ended-label">통화 종료</p>
+    <p class="ended-label">Call ended</p>
     <h2 id="ended-name" class="ended-name">—</h2>
     <p id="ended-dur" class="mono ended-dur">00:00</p>
-    <button id="restart-btn" class="gate-btn" type="button">다시 걸기</button>
+    <button id="restart-btn" class="gate-btn" type="button">Call again</button>
   </div>
 
   <div id="toast" class="toast" hidden></div>
@@ -143,18 +143,18 @@
 <!-- ───────────────────────── 발표자 패널 ───────────────────────── -->
 <aside id="presenter" class="presenter" hidden>
   <header>
-    <strong>발표자 패널</strong>
-    <button id="presenter-close" type="button" aria-label="닫기">✕</button>
+    <strong>Presenter</strong>
+    <button id="presenter-close" type="button" aria-label="Close">✕</button>
   </header>
   <ol id="presenter-list"></ol>
   <footer>
-    <button id="presenter-restart" class="restart-btn" type="button">처음부터 다시 시작</button>
+    <button id="presenter-restart" class="restart-btn" type="button">Restart from the beginning</button>
     <div class="keys">
-      <span><span class="kbd">→</span> 다음</span><span><span class="kbd">←</span> 이전</span>
-      <span><span class="kbd">R</span> 처음부터</span><span><span class="kbd">F</span> 전체화면</span>
-      <span><span class="kbd">M</span> 마이크</span><span><span class="kbd">C</span> 카메라</span>
-      <span><span class="kbd">H</span> 패널</span><span><span class="kbd">Esc</span> 종료</span>
-      <span><span class="kbd">0</span> 되감기</span><span><span class="kbd">1</span>–<span class="kbd">9</span> 바로가기</span>
+      <span><span class="kbd">→</span> Next</span><span><span class="kbd">←</span> Back</span>
+      <span><span class="kbd">R</span> Restart</span><span><span class="kbd">F</span> Fullscreen</span>
+      <span><span class="kbd">M</span> Mute</span><span><span class="kbd">C</span> Camera</span>
+      <span><span class="kbd">H</span> Panel</span><span><span class="kbd">Esc</span> End</span>
+      <span><span class="kbd">0</span> Replay</span><span><span class="kbd">1</span>–<span class="kbd">9</span> Jump</span>
     </div>
   </footer>
 </aside>

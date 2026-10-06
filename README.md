@@ -93,6 +93,22 @@ node tools/build-manifest.mjs --cctv-from=5    # 5번부터 CCTV 파트
 **드라이브는 팀 협업·보관용으로 쓰고, 발표 전에 `videos/` 폴더로 내려받아 로컬에서 재생하세요.**
 넘버링해둔 파일명이 그대로 재생 순서가 되므로, 받아서 폴더에 넣고 스크립트 한 번 돌리면 끝입니다.
 
+### 용량이 크면 — 압축 스크립트
+
+4K나 고비트레이트 원본은 노트북에서 버벅이거나 공유가 번거롭습니다.
+한 번에 발표용으로 줄일 수 있습니다.
+
+```bash
+./tools/compress.sh          # 최대 1080p, 화질 우선 (권장)
+./tools/compress.sh 720      # 더 작게
+./tools/compress.sh 1080 20  # 높이 1080, CRF 20 (숫자가 낮을수록 고화질)
+```
+
+- 세로 영상도 비율을 유지한 채 높이 기준으로만 줄입니다. 기준보다 작은 영상은 건드리지 않습니다.
+- **오디오를 검사해서, 원본에 있던 소리가 사라지면 그 파일은 압축하지 않고 원본을 남깁니다.**
+- 원본은 지우지 않고 `videos/original/` 로 옮겨 보관하므로 언제든 되돌릴 수 있습니다.
+- 압축본이 원본 파일명을 그대로 가져가므로 `videos.json` 은 손댈 필요가 없습니다.
+
 ### 인코딩
 
 `.mp4` (H.264 + AAC) 를 권장합니다. 아이폰으로 찍은 `.mov`(HEVC)는 브라우저에서 재생이 안 될 수 있습니다.
@@ -161,11 +177,13 @@ ENDED         통화 시간과 함께 종료
 
 ## 5. 설정 (`videos.json`)
 
+화면에 나오는 모든 문구는 영어입니다. 아래 `caller.name` 등도 영어로 넣으세요.
+
 ```jsonc
 {
   "caller": {
-    "name": "서지민",          // 창 좌상단 이름
-    "initials": "지민",        // 아바타 글자
+    "name": "Raymond Kim",     // 창 좌상단 이름
+    "initials": "RK",          // 아바타 글자 (2글자 권장)
     "avatar": "assets/face.jpg" // 프로필 사진 (선택)
   },
   "options": {
@@ -173,14 +191,15 @@ ENDED         통화 시간과 함께 종료
     "glitchMs": 700,           // CCTV 진입 글리치 길이
     "showSelfInCctv": true,    // CCTV 화면에 내 카메라 썸네일
     "cctvClock": "2026-10-08T21:14:03",  // CCTV 타임스탬프 시작 시각
+    "cctvFrom": 5,             // 몇 번 영상부터 CCTV 파트인지 (빌더가 기억)
     "ringtone": true,          // 발신음
     "backdrop": "",            // 창 뒤 바탕화면 이미지 (예: assets/desktop.jpg)
     "startFullscreen": false
   },
   "clips": [
-    { "src": "videos/01_call_첫인사.mp4", "part": "call", "label": "첫 인사" },
-    { "src": "videos/05_cctv_거실.mp4",  "part": "cctv", "label": "아침",
-      "cam": "CAM 03", "location": "LIVING ROOM",
+    { "src": "videos/00 - listening to c&c.mp4", "part": "call", "label": "listening to c&c" },
+    { "src": "videos/05 - FitnessRoom.mp4", "part": "cctv", "label": "FitnessRoom",
+      "cam": "CAM 01", "location": "FITNESS ROOM",
       "date": "2026-10-08T07:12:40",   // 이 클립만 다른 시각 표시
       "loop": true }                    // 반복 재생
   ]
