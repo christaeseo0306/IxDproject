@@ -80,6 +80,13 @@ async function loadConfig() {
   return normalize({ clips: DEMO_CLIPS }, 'demo');
 }
 
+/* 경로에서 앞머리 숫자를 읽습니다 — videos/05 - FitnessRoom.mp4 → 5 */
+function numberFromSrc(src) {
+  const base = decodeURIComponent(String(src || '')).split('/').pop() || '';
+  const m = base.match(/^\s*(\d+)/);
+  return m ? Number(m[1]) : null;
+}
+
 function normalize(json, source) {
   return {
     caller: { ...DEFAULTS.caller, ...(json.caller || {}) },
@@ -87,7 +94,10 @@ function normalize(json, source) {
     clips: (json.clips || []).map((c, i) => ({
       src: c.src || '',
       part: c.part === 'cctv' ? 'cctv' : 'call',
-      label: c.label || `Clip ${String(i).padStart(2, '0')}`,
+      no: Number.isFinite(c.no) ? c.no : numberFromSrc(c.src),
+      label: c.label
+        || `Clip ${String(Number.isFinite(c.no) ? c.no : (numberFromSrc(c.src) ?? i)).padStart(2, '0')}`,
+      auto: !c.label,
       cam: c.cam || `CAM ${String((i % 8) + 1).padStart(2, '0')}`,
       location: c.location || '',
       loop: !!c.loop,
@@ -213,7 +223,7 @@ async function saveSequence() {
   const rows = S.clips
     .filter((c) => c._blob)
     .map((c) => ({
-      name: c._name, blob: c._blob, part: c.part, label: c.label,
+      name: c._name, blob: c._blob, part: c.part, label: c.label, auto: !!c.auto, no: c.no,
       cam: c.cam, location: c.location,
     }));
   try {
@@ -239,7 +249,8 @@ async function restoreSequence() {
     const url = URL.createObjectURL(r.blob);
     S.objectUrls.push(url);
     return {
-      src: url, part: r.part === 'cctv' ? 'cctv' : 'call', label: r.label,
+      src: url, part: r.part === 'cctv' ? 'cctv' : 'call', label: r.label, auto: !!r.auto,
+      no: Number.isFinite(r.no) ? r.no : null,
       cam: r.cam, location: r.location || '', loop: false, fit: '', date: '',
       _blob: r.blob, _name: r.name,
     };
@@ -288,7 +299,9 @@ function parseName(name) {
     rest = rest.replace(partMatch[0], ' ');
   }
   const label = rest.replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim();
-  return { order, part, cam, label: label || stem };
+  // 숫자만으로 된 파일명(00.mp4)은 보여 줄 제목이 없는 것으로 둡니다
+  const bare = /^\s*\d+\s*$/.test(stem);
+  return { order, part, cam, label: bare ? '' : (label || stem), no: num ? order : null };
 }
 
 /* 드롭된 항목에서 영상 파일만 긁어냅니다 (폴더 1단계까지) */
@@ -330,14 +343,17 @@ function loadDroppedFiles(files) {
     S.objectUrls.push(url);
     let part = p.part;
     if (!part) part = (Number.isFinite(cctvFrom) && p.order >= cctvFrom) ? 'cctv' : 'call';
+    const auto = !p.label;
     const clip = {
-      src: url, part, label: p.label, loop: false, fit: '', date: '',
+      src: url, part, auto, no: Number.isFinite(p.no) ? p.no : null,
+      label: p.label || `Clip ${pad(Number.isFinite(p.no) ? p.no : 0)}`,
+      loop: false, fit: '', date: '',
       _blob: p.file, _name: p.file.name,
     };
     clip.cam = part === 'cctv'
       ? (p.cam || `CAM ${String((cam++ % 8) + 1).padStart(2, '0')}`)
       : `CAM ${String((cam % 8) + 1).padStart(2, '0')}`;
-    clip.location = part === 'cctv' ? (p.label || clip.cam).toUpperCase() : '';
+    clip.location = part === 'cctv' ? (p.label ? p.label.toUpperCase() : clip.cam) : '';
     return clip;
   });
   S.cfg.clips = S.clips;
@@ -455,8 +471,8 @@ function resolveSrc(clip) {
 function setPlaceholder(clip, i, on) {
   const ph = $('#placeholder');
   if (!on) { ph.hidden = true; return; }
-  ph.querySelector('.ph-index').textContent = pad(i);
-  ph.querySelector('.ph-label').textContent = clip.label;
+  ph.querySelector('.ph-index').textContent = clipNo(clip, i);
+  ph.querySelector('.ph-label').textContent = clip.auto ? '' : clip.label;
   ph.querySelector('.ph-note').textContent = clip.src
     ? `Could not load — ${clip.src}`
     : 'Drop your videos into videos/ and run: node tools/build-manifest.mjs';
@@ -558,7 +574,7 @@ function bodyPart(clip) {
   document.documentElement.style.setProperty('--fit', clip.fit || S.cfg.options.fit);
   if (clip.part === 'cctv') {
     $('#cctv-cam').textContent = clip.cam;
-    $('#cctv-loc').textContent = clip.location || clip.label;
+    $('#cctv-loc').textContent = clip.location || (clip.auto ? clip.cam : clip.label);
     $('#cctv-meta').textContent = `1080P · 30FPS · CH ${(clip.cam.match(/\d+/) || ['01'])[0]}/08`;
   }
 }
@@ -630,6 +646,8 @@ function restart(opts = {}) {
 
 /* ══════════════ 시계 ══════════════ */
 const pad = (n) => String(n).padStart(2, '0');
+/* 목록과 플레이스홀더에 보여 줄 번호 — 파일명의 숫자를 그대로 씁니다 */
+const clipNo = (c, i) => pad(Number.isFinite(c?.no) ? c.no : i);
 function fmt(ms) {
   const s = Math.max(0, Math.floor(ms / 1000));
   const h = Math.floor(s / 3600);
@@ -677,7 +695,7 @@ function renderPresenter() {
   S.clips.forEach((c, i) => {
     const li = document.createElement('li');
     li.className = (i === S.idx ? 'is-cur ' : '') + (c.src ? '' : 'is-missing');
-    li.innerHTML = `<span class="p-num">${pad(i)}</span>`
+    li.innerHTML = `<span class="p-num">${clipNo(c, i)}</span>`
       + '<span class="p-label"></span>'
       + (c.noAudio ? '<span class="p-mute" title="No audio track">NO AUDIO</span>' : '')
       + `<button class="p-part ${c.part}" type="button" title="Switch part">${c.part.toUpperCase()}</button>`
@@ -685,7 +703,9 @@ function renderPresenter() {
       +   `<button type="button" title="Move up"${i === 0 ? ' disabled' : ''}>↑</button>`
       +   `<button type="button" title="Move down"${i === S.clips.length - 1 ? ' disabled' : ''}>↓</button>`
       + '</span>';
-    li.querySelector('.p-label').textContent = c.label;
+    const lab = li.querySelector('.p-label');
+    lab.textContent = c.auto ? '—' : c.label;
+    lab.classList.toggle('is-auto', !!c.auto);
     li.addEventListener('click', () => { if (state() !== 'gate') goto(i); });
     li.querySelector('.p-part').addEventListener('click', (e) => {
       e.stopPropagation(); setPart(i, c.part === 'cctv' ? 'call' : 'cctv');
@@ -720,7 +740,7 @@ function move(i, dir) {
 function setPart(i, part) {
   const c = S.clips[i];
   c.part = part;
-  if (part === 'cctv' && !c.location) c.location = (c.label || c.cam).toUpperCase();
+  if (part === 'cctv' && !c.location) c.location = c.auto ? c.cam : c.label.toUpperCase();
   if (i === S.idx) { setState(part === 'cctv' ? 'cctv' : 'live'); bodyPart(c); }
   renderPresenter();
   saveSequence();
@@ -783,7 +803,12 @@ document.addEventListener('keydown', (e) => {
     case 'Home': e.preventDefault(); goto(0); break;
     case 'End': e.preventDefault(); goto(S.clips.length - 1); break;
     default:
-      if (/^[0-9]$/.test(k)) { e.preventDefault(); goto(Number(k)); }   // 00 → 첫 클립
+      if (/^[0-9]$/.test(k)) {                       // 보이는 번호로 이동
+        e.preventDefault();
+        const n = Number(k);
+        const hit = S.clips.findIndex((c) => c.no === n);
+        goto(hit >= 0 ? hit : n);
+      }
   }
 });
 

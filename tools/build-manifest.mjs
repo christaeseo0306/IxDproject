@@ -5,9 +5,11 @@
    사용법:
      node tools/build-manifest.mjs
      node tools/build-manifest.mjs --cctv-from=5
+     node tools/build-manifest.mjs --if-changed   # 구성이 바뀌었을 때만 갱신
      node tools/build-manifest.mjs --name="서지민" --dir=videos
 
    파일명 규칙 (앞의 숫자가 재생 순서):
+     00.mp4                      → 0번, 제목 없이 번호만 (가장 간단)
      00 - 첫인사.mp4             → 0번, 파트는 --cctv-from 기준으로 결정
      01_call_첫인사.mp4          → 1번, 영상통화 파트
      05_cctv_거실.mp4            → 5번, CCTV 파트
@@ -77,7 +79,9 @@ const parsed = files.map((file) => {
   }
 
   const label = rest.replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim();
-  return { file, order, part, cam, label, stem };
+  // 숫자만으로 된 파일명(00.mp4)은 보여 줄 제목이 없는 것으로 둡니다
+  const bare = /^\s*\d+\s*$/.test(stem);
+  return { file, order, part, cam, label: bare ? '' : label, stem, bare };
 });
 
 parsed.sort((a, b) =>
@@ -98,14 +102,12 @@ let camCounter = 0;
 const clips = parsed.map((p, i) => {
   let part = p.part;
   if (!part) part = (cctvFrom != null && p.order >= cctvFrom) ? 'cctv' : 'call';
-  const clip = {
-    src: `${dir}/${p.file}`,
-    part,
-    label: p.label || p.stem,
-  };
+  const clip = { src: `${dir}/${p.file}`, part };
+  if (Number.isFinite(p.order)) clip.no = p.order;    // 화면에 보일 번호 = 파일명의 숫자
+  if (!p.bare) clip.label = p.label || p.stem;        // 숫자뿐이면 제목 없음
   if (part === 'cctv') {
     clip.cam = p.cam || `CAM ${String((camCounter++ % 8) + 1).padStart(2, '0')}`;
-    clip.location = (p.label || '').toUpperCase() || clip.cam;
+    clip.location = p.label ? p.label.toUpperCase() : clip.cam;
   }
   return clip;
 });
@@ -121,13 +123,24 @@ const manifest = {
 if (args.name) manifest.caller.name = String(args.name);
 if (cctvFrom != null) manifest.options.cctvFrom = cctvFrom;
 
+// --if-changed : videos/ 의 구성이 그대로면 아무것도 건드리지 않습니다
+if (args['if-changed'] && Array.isArray(prev?.clips)) {
+  const before = prev.clips.map((c) => c.src).join('\n');
+  const after = clips.map((c) => c.src).join('\n');
+  if (before === after) {
+    if (!args.quiet) console.log(`· ${out} 그대로 — 영상 ${clips.length}개`);
+    process.exit(0);
+  }
+}
+
 writeFileSync(out, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
 
 console.log(`✓ ${out} 생성 — 클립 ${clips.length}개`);
 const w = String(clips.length).length;
 clips.forEach((c, i) => {
   const tag = c.part === 'cctv' ? `CCTV ${c.cam}` : 'CALL';
-  console.log(`  ${String(i + 1).padStart(w, ' ')}. [${tag.padEnd(12)}] ${c.label}  ← ${c.src}`);
+  const name = c.label || `(제목 없음 · ${String(c.no ?? i).padStart(2, '0')}번)`;
+  console.log(`  ${String(i).padStart(w, ' ')}. [${tag.padEnd(12)}] ${name}  ← ${c.src}`);
 });
 const n = clips.filter((c) => c.part === 'cctv').length;
 console.log(`\n  파트1 영상통화 ${clips.length - n}개 · 파트2 CCTV ${n}개`);
