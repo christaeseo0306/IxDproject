@@ -8,6 +8,7 @@
      node tools/build-manifest.mjs --name="서지민" --dir=videos
 
    파일명 규칙 (앞의 숫자가 재생 순서):
+     00 - 첫인사.mp4             → 0번, 파트는 --cctv-from 기준으로 결정
      01_call_첫인사.mp4          → 1번, 영상통화 파트
      05_cctv_거실.mp4            → 5번, CCTV 파트
      05_cctv_거실@CAM03.mp4      → CAM 03 으로 표기
@@ -29,7 +30,17 @@ const args = Object.fromEntries(
 
 const dir = String(args.dir || 'videos');
 const out = String(args.out || 'videos.json');
-const cctvFrom = args['cctv-from'] ? Number(args['cctv-from']) : null;
+
+// 기존 매니페스트의 caller / options 는 보존하고, 파트 경계도 기억해 둡니다
+let prev = {};
+if (existsSync(out)) {
+  try { prev = JSON.parse(readFileSync(out, 'utf8')); }
+  catch { console.warn(`⚠ 기존 ${out} 을 읽을 수 없어 새로 만듭니다.`); }
+}
+const storedFrom = Number(prev?.options?.cctvFrom);
+const cctvFrom = args['cctv-from'] != null
+  ? Number(args['cctv-from'])
+  : (Number.isFinite(storedFrom) ? storedFrom : null);
 
 if (!existsSync(dir)) {
   console.error(`✗ '${dir}' 폴더가 없습니다.`);
@@ -78,6 +89,9 @@ const anyPart = parsed.some((p) => p.part);
 if (!anyPart && cctvFrom == null) {
   console.warn('⚠ 파일명에 call/cctv 표기가 없습니다. 전부 영상통화 파트로 둡니다.');
   console.warn('  두 번째 파트를 나누려면: node tools/build-manifest.mjs --cctv-from=5');
+  console.warn('  (한 번 지정하면 videos.json 에 기억되어 다음부터는 생략할 수 있습니다)');
+} else if (!anyPart && args['cctv-from'] == null) {
+  console.log(`· 기억된 파트 경계를 사용합니다 — ${cctvFrom}번부터 CCTV`);
 }
 
 let camCounter = 0;
@@ -96,12 +110,6 @@ const clips = parsed.map((p, i) => {
   return clip;
 });
 
-// 기존 caller/options 보존
-let prev = {};
-if (existsSync(out)) {
-  try { prev = JSON.parse(readFileSync(out, 'utf8')); }
-  catch { console.warn(`⚠ 기존 ${out} 을 읽을 수 없어 새로 만듭니다.`); }
-}
 const sample = existsSync('videos.sample.json')
   ? JSON.parse(readFileSync('videos.sample.json', 'utf8')) : {};
 
@@ -111,6 +119,7 @@ const manifest = {
   clips,
 };
 if (args.name) manifest.caller.name = String(args.name);
+if (cctvFrom != null) manifest.options.cctvFrom = cctvFrom;
 
 writeFileSync(out, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
 

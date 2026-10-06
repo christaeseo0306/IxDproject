@@ -50,6 +50,7 @@ const S = {
   clipStartAt: Date.now(),
   cctvBase: Date.now(),
   gen: 0,
+  primed: false,
   audioCtx: null,
   ringTimer: null,
 };
@@ -132,7 +133,7 @@ function toggleCam() {
 
 function toggleMute() {
   S.muted = !S.muted;
-  players.forEach((v) => { v.muted = S.muted; });
+  players.forEach((v) => { v.muted = S.muted; v.volume = 1; });
   $('#btn-mute').classList.toggle('is-off', S.muted);
   toast(S.muted ? '음소거' : '음소거 해제');
 }
@@ -175,6 +176,56 @@ function stopRing() { if (S.ringTimer) clearInterval(S.ringTimer); S.ringTimer =
 function blip(up = true) {
   if (!S.cfg?.options.ringtone) return;
   (up ? [659.3, 880] : [587.3, 392]).forEach((f, i) => tone(f, i * 0.1, 0.35, 0.09));
+}
+
+/* ══════════════ 소리 ══════════════
+   브라우저 자동재생 정책은 사용자 제스처 없이 소리 있는 재생을 막습니다.
+   게이트 클릭(진짜 제스처) 시점에 비디오 엘리먼트를 한 번 재생시켜 잠금을
+   풀어두면, 이후 방향키로 넘길 때도 소리가 그대로 나옵니다. ── */
+
+async function primeMedia() {
+  // goto(0)은 players[1]을 쓰므로 거기에 첫 클립을 미리 물려둡니다
+  const order = [S.clips[1], S.clips[0]];
+  await Promise.allSettled(players.map(async (v, i) => {
+    v.volume = 1;
+    const clip = order[i];
+    const src = clip ? resolveSrc(clip) : '';
+    if (!src) return;
+    v.dataset.src = src; v.src = src;
+    v.muted = true;                       // 잠금 해제용 무음 재생
+    try { await v.play(); } catch (_) { /* 막혀도 아래에서 되살립니다 */ }
+    v.pause();
+    try { v.currentTime = 0; } catch (_) { /* 메타데이터 전 */ }
+    v.muted = S.muted;                    // 다시 소리 켬
+  }));
+  S.primed = true;
+}
+
+/* 이 클립에 오디오 트랙이 실제로 있는지 (브라우저별 신호, 모르면 null) */
+function hasAudioTrack(v) {
+  if (typeof v.webkitAudioDecodedByteCount === 'number') {
+    return v.webkitAudioDecodedByteCount > 0;
+  }
+  if (typeof v.mozHasAudio === 'boolean') return v.mozHasAudio;
+  if (v.audioTracks) return v.audioTracks.length > 0;
+  return null;
+}
+
+/* 재생 직후 소리가 실제로 나오는지 점검하고, 아니면 이유를 알려줍니다 */
+function auditAudio(v, clip, gen) {
+  setTimeout(() => {
+    if (gen !== S.gen || !clip.src) return;
+    if (v.paused && !v.ended) {
+      toast('화면을 클릭하면 소리와 함께 재생됩니다');
+      return;
+    }
+    if (S.muted) return;                  // 발표자가 직접 끈 경우
+    if (hasAudioTrack(v) === false && !clip.noAudio) {
+      clip.noAudio = true;                // 발표자 패널에 표시
+      renderPresenter();
+      toast(`'${clip.label}' 에 오디오 트랙이 없습니다`);
+    }
+  }, 1400);
 }
 
 /* ══════════════ 재생 엔진 ══════════════ */
@@ -243,6 +294,7 @@ async function goto(i, opts = {}) {
     if (next.dataset.src !== src) { next.dataset.src = src; next.src = src; }
     next.loop = clip.loop;
     next.muted = S.muted;
+    next.volume = 1;
     try { next.currentTime = 0; } catch (_) { /* 메타데이터 전 */ }
     if (next.readyState < 2) {
       // 미리 받아둔 클립이면 즉시, 아니면 잠깐만 기다렸다 전환합니다
@@ -254,6 +306,7 @@ async function goto(i, opts = {}) {
       if (r === 'error') failed = true;
     }
     next.play().catch(() => { /* 사용자 제스처 전이면 조용히 무시 */ });
+    auditAudio(next, clip, gen);
   }
 
   // 비디오 교체
@@ -310,6 +363,7 @@ async function startCalling() {
   $('#gate-note').textContent = '카메라 권한을 확인하는 중…';
   audio();                                     // 사용자 제스처로 오디오 잠금 해제
   const cam = await initCamera();
+  await primeMedia();                     // 제스처가 살아 있는 동안 소리 잠금 해제
   $('#gate').classList.remove('is-on');
   setState('calling');
   $('#status-text').textContent = '연결 중';
@@ -412,6 +466,7 @@ function renderPresenter() {
     li.className = (i === S.idx ? 'is-cur ' : '') + (c.src ? '' : 'is-missing');
     li.innerHTML = `<span class="p-num">${pad(i + 1)}</span>`
       + '<span class="p-label"></span>'
+      + (c.noAudio ? '<span class="p-mute" title="오디오 트랙 없음">무음</span>' : '')
       + `<span class="p-part ${c.part}">${c.part.toUpperCase()}</span>`;
     li.querySelector('.p-label').textContent = c.label;
     li.addEventListener('click', () => { if (state() !== 'gate') goto(i); });
