@@ -73,6 +73,24 @@ body[data-backdrop] .desktop::after{
 .gate-btn:disabled{opacity:.55;cursor:default}
 .gate-note{margin:1.4rem auto 0;max-width:30rem;color:var(--fg-faint);
   font-size:.82rem;line-height:1.6;min-height:1.2em}
+.gate-drop{margin:.4rem 0 0;color:var(--fg-faint);font-size:.78rem}
+
+/* 드래그 앤 드롭 */
+.drop-veil{
+  position:fixed;inset:0;z-index:70;display:none;
+  align-items:center;justify-content:center;
+  background:rgba(7,7,10,.86);backdrop-filter:blur(22px);
+  -webkit-backdrop-filter:blur(22px);
+}
+body.dropping .drop-veil{display:flex;animation:fade .18s var(--ease)}
+.drop-card{
+  display:grid;justify-items:center;gap:.7rem;padding:3rem 4rem;border-radius:20px;
+  border:2px dashed rgba(47,209,89,.6);background:rgba(47,209,89,.06);
+  text-align:center;pointer-events:none;
+}
+.drop-card svg{width:46px;height:46px;color:var(--green)}
+.drop-card strong{font-size:1.25rem;font-weight:600}
+.drop-card span{color:var(--fg-dim);font-size:.85rem}
 
 /* ══════════════ FACETIME 창 ══════════════ */
 .window{

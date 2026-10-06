@@ -23,6 +23,7 @@
     <p class="gate-sub">Start a FaceTime call with <span id="gate-name">—</span></p>
     <button id="gate-btn" class="gate-btn" type="button">Call</button>
     <p id="gate-note" class="gate-note"></p>
+    <p class="gate-drop">or drag your video files here</p>
   </div>
 </section>
 
@@ -158,6 +159,14 @@
     </div>
   </footer>
 </aside>
+
+<div id="drop-veil" class="drop-veil" aria-hidden="true">
+  <div class="drop-card">
+    <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0L7 9m5-5l5 5M4 17v2a1 1 0 001 1h14a1 1 0 001-1v-2" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <strong>Drop your videos</strong>
+    <span>They play in filename order (00, 01, 02 …)</span>
+  </div>
+</div>
 
 <div id="warn" class="warn" hidden></div>
 

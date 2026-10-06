@@ -51,6 +51,7 @@ const S = {
   cctvBase: Date.now(),
   gen: 0,
   primed: false,
+  objectUrls: [],
   audioCtx: null,
   ringTimer: null,
 };
@@ -178,6 +179,112 @@ function blip(up = true) {
   (up ? [659.3, 880] : [587.3, 392]).forEach((f, i) => tone(f, i * 0.1, 0.35, 0.09));
 }
 
+/* ══════════════ 드래그 앤 드롭 ══════════════
+   폴더를 만지지 않고 영상 파일(또는 videos 폴더)을 창에 끌어다 놓으면
+   파일명 순서대로 재생 목록이 만들어집니다. ── */
+
+const VIDEO_RE = /\.(mp4|webm|mov|m4v|ogv)$/i;
+
+/* 빌더(tools/build-manifest.mjs)와 같은 파일명 규칙 */
+function parseName(name) {
+  const stem = name.replace(/\.[^.]+$/, '');
+  const num = stem.match(/^\s*(\d+)/);
+  const order = num ? Number(num[1]) : Number.POSITIVE_INFINITY;
+  let rest = stem.replace(/^\s*\d+\s*[-_.\s]*/, '');
+
+  let cam = '';
+  const camMatch = rest.match(/@\s*cam\s*[-_]?\s*(\d+)/i);
+  if (camMatch) { cam = `CAM ${String(camMatch[1]).padStart(2, '0')}`; rest = rest.replace(camMatch[0], ''); }
+
+  let part = '';
+  const partMatch = rest.match(/(^|[-_\s])(call|cctv|rec|talk)([-_\s]|$)/i);
+  if (partMatch) {
+    const tok = partMatch[2].toLowerCase();
+    part = (tok === 'cctv' || tok === 'rec') ? 'cctv' : 'call';
+    rest = rest.replace(partMatch[0], ' ');
+  }
+  const label = rest.replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return { order, part, cam, label: label || stem };
+}
+
+/* 드롭된 항목에서 영상 파일만 긁어냅니다 (폴더 1단계까지) */
+async function filesFromDrop(dt) {
+  const out = [];
+  const items = dt.items ? [...dt.items] : [];
+  const entries = items.map((it) => it.webkitGetAsEntry?.()).filter(Boolean);
+
+  if (entries.length) {
+    const readDir = (dirReader) => new Promise((res) => dirReader.readEntries(res, () => res([])));
+    const asFile = (entry) => new Promise((res) => entry.file(res, () => res(null)));
+    for (const entry of entries) {
+      if (entry.isFile) { const f = await asFile(entry); if (f) out.push(f); }
+      else if (entry.isDirectory) {
+        for (const child of await readDir(entry.createReader())) {
+          if (child.isFile) { const f = await asFile(child); if (f) out.push(f); }
+        }
+      }
+    }
+  }
+  if (!out.length && dt.files) out.push(...dt.files);
+  return out.filter((f) => VIDEO_RE.test(f.name));
+}
+
+function loadDroppedFiles(files) {
+  if (!files.length) { toast('No video files found'); return false; }
+
+  const cctvFrom = Number(S.cfg.options.cctvFrom);
+  const parsed = files.map((file) => ({ file, ...parseName(file.name) }));
+  parsed.sort((a, b) =>
+    a.order - b.order || a.file.name.localeCompare(b.file.name, 'en', { numeric: true }));
+
+  let cam = 0;
+  S.objectUrls.forEach((u) => URL.revokeObjectURL(u));
+  S.objectUrls = [];
+
+  S.clips = parsed.map((p) => {
+    const url = URL.createObjectURL(p.file);
+    S.objectUrls.push(url);
+    let part = p.part;
+    if (!part) part = (Number.isFinite(cctvFrom) && p.order >= cctvFrom) ? 'cctv' : 'call';
+    const clip = { src: url, part, label: p.label, loop: false, fit: '', date: '' };
+    clip.cam = part === 'cctv'
+      ? (p.cam || `CAM ${String((cam++ % 8) + 1).padStart(2, '0')}`)
+      : `CAM ${String((cam % 8) + 1).padStart(2, '0')}`;
+    clip.location = part === 'cctv' ? (p.label || clip.cam).toUpperCase() : '';
+    return clip;
+  });
+  S.cfg.clips = S.clips;
+
+  const n = S.clips.filter((c) => c.part === 'cctv').length;
+  $('#warn').hidden = true;
+  renderPresenter();
+  toast(`${S.clips.length} clips loaded — ${S.clips.length - n} call, ${n} CCTV`);
+  return true;
+}
+
+function wireDropZone() {
+  const stop = (e) => { e.preventDefault(); e.stopPropagation(); };
+  const droppable = () => state() === 'gate' || state() === 'ended';
+
+  ['dragenter', 'dragover'].forEach((ev) => document.addEventListener(ev, (e) => {
+    if (!droppable() || !e.dataTransfer?.types?.includes('Files')) return;
+    stop(e);
+    e.dataTransfer.dropEffect = 'copy';
+    body.classList.add('dropping');
+  }));
+  ['dragleave', 'dragend'].forEach((ev) => document.addEventListener(ev, (e) => {
+    if (e.relatedTarget) return;
+    body.classList.remove('dropping');
+  }));
+  document.addEventListener('drop', async (e) => {
+    if (!droppable()) return;
+    stop(e);
+    body.classList.remove('dropping');
+    const files = await filesFromDrop(e.dataTransfer);
+    if (loadDroppedFiles(files) && state() === 'ended') restart({ silent: true });
+  });
+}
+
 /* ══════════════ 소리 ══════════════
    브라우저 자동재생 정책은 사용자 제스처 없이 소리 있는 재생을 막습니다.
    게이트 클릭(진짜 제스처) 시점에 비디오 엘리먼트를 한 번 재생시켜 잠금을
@@ -234,6 +341,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function resolveSrc(clip) {
   if (!clip.src) return '';
+  if (/^(blob:|data:|https?:)/.test(clip.src)) return clip.src;   // 드롭한 파일 등
   // 한글·공백이 들어간 파일명 안전 처리 (이미 인코딩된 경로는 그대로)
   return clip.src.split('/').map((seg) =>
     /%[0-9A-Fa-f]{2}/.test(seg) ? seg : encodeURIComponent(seg)
@@ -595,6 +703,7 @@ players.forEach((v) => {
   document.documentElement.style.setProperty('--fit', S.cfg.options.fit);
 
   renderPresenter();
+  wireDropZone();
   setInterval(tick, 250);
 
   const warns = [];
