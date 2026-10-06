@@ -1,0 +1,25 @@
+{
+  "caller": {
+    "name": "서지민",
+    "sub": "FaceTime 영상",
+    "avatar": "",
+    "initials": "지민"
+  },
+  "options": {
+    "fit": "cover",
+    "connectingMs": 1400,
+    "glitchMs": 700,
+    "showSelfInCctv": true,
+    "cctvClock": "2026-10-08T21:14:03",
+    "ringtone": true
+  },
+  "clips": [
+    { "src": "", "part": "call", "label": "통화 연결 — 첫 인사" },
+    { "src": "", "part": "call", "label": "자기소개" },
+    { "src": "", "part": "call", "label": "오늘 하루 이야기" },
+    { "src": "", "part": "call", "label": "질문을 건네다" },
+    { "src": "", "part": "cctv", "label": "아침", "cam": "CAM 03", "location": "LIVING ROOM" },
+    { "src": "", "part": "cctv", "label": "오후", "cam": "CAM 05", "location": "STUDIO", "date": "2026-10-08T14:02:11" },
+    { "src": "", "part": "cctv", "label": "밤", "cam": "CAM 01", "location": "ENTRANCE", "date": "2026-10-08T23:47:52" }
+  ]
+}
