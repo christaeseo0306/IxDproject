@@ -11,7 +11,8 @@
     "glitchMs": 700,
     "showSelfInCctv": true,
     "cctvClock": "2026-10-08T21:14:03",
-    "ringtone": true
+    "ringtone": true,
+    "cctvFrom": 5
   },
   "clips": [
     {

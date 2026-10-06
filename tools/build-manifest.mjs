@@ -39,10 +39,18 @@ if (existsSync(out)) {
   try { prev = JSON.parse(readFileSync(out, 'utf8')); }
   catch { console.warn(`⚠ 기존 ${out} 을 읽을 수 없어 새로 만듭니다.`); }
 }
+let sample = {};
+if (existsSync('videos.sample.json')) {
+  try { sample = JSON.parse(readFileSync('videos.sample.json', 'utf8')); } catch { /* 없어도 됩니다 */ }
+}
+
+// 파트 경계: 명령줄 > 기존 videos.json > videos.sample.json 순으로 찾습니다
 const storedFrom = Number(prev?.options?.cctvFrom);
+const sampleFrom = Number(sample?.options?.cctvFrom);
 const cctvFrom = args['cctv-from'] != null
   ? Number(args['cctv-from'])
-  : (Number.isFinite(storedFrom) ? storedFrom : null);
+  : (Number.isFinite(storedFrom) ? storedFrom
+    : (Number.isFinite(sampleFrom) ? sampleFrom : null));
 
 if (!existsSync(dir)) {
   console.error(`✗ '${dir}' 폴더가 없습니다.`);
@@ -114,7 +122,7 @@ if (!anyPart && cctvFrom == null) {
   console.warn('  두 번째 파트를 나누려면: node tools/build-manifest.mjs --cctv-from=5');
   console.warn('  (한 번 지정하면 videos.json 에 기억되어 다음부터는 생략할 수 있습니다)');
 } else if (!anyPart && args['cctv-from'] == null) {
-  console.log(`· 기억된 파트 경계를 사용합니다 — ${cctvFrom}번부터 CCTV`);
+  console.log(`· 파트 경계: ${cctvFrom}번부터 CCTV (바꾸려면 --cctv-from=숫자)`);
 }
 
 let camCounter = 0;
@@ -130,9 +138,6 @@ const clips = parsed.map((p, i) => {
   }
   return clip;
 });
-
-const sample = existsSync('videos.sample.json')
-  ? JSON.parse(readFileSync('videos.sample.json', 'utf8')) : {};
 
 const manifest = {
   caller: { ...(sample.caller || {}), ...(prev.caller || {}) },
