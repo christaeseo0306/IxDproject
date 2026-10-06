@@ -12,3 +12,6 @@ videos.json
 # 녹화/데모 산출물
 /demo.mp4
 /embed-test.html
+
+# git 번들 (히스토리 전달용)
+*.bundle
