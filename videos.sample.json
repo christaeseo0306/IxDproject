@@ -13,7 +13,12 @@
     "cctvClock": "2026-10-08T21:14:03",
     "ringtone": true,
     "cctvFrom": 5,
-    "cameraOffInCctv": true
+    "cameraOffInCctv": true,
+    "allowDrop": false,
+    "loopClips": [
+      0,
+      2
+    ]
   },
   "clips": [
     {

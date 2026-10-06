@@ -125,12 +125,18 @@ if (!anyPart && cctvFrom == null) {
   console.log(`· 파트 경계: ${cctvFrom}번부터 CCTV (바꾸려면 --cctv-from=숫자)`);
 }
 
+// 반복 재생할 번호 — 기존 videos.json 이 우선, 없으면 videos.sample.json
+const loopFrom = Array.isArray(prev?.options?.loopClips) ? prev.options.loopClips
+  : (Array.isArray(sample?.options?.loopClips) ? sample.options.loopClips : []);
+const loopSet = new Set(loopFrom.map(Number));
+
 let camCounter = 0;
 const clips = parsed.map((p, i) => {
   let part = p.part;
   if (!part) part = (cctvFrom != null && p.order >= cctvFrom) ? 'cctv' : 'call';
   const clip = { src: `${dir}/${p.file}`, part };
   if (Number.isFinite(p.order)) clip.no = p.order;    // 화면에 보일 번호 = 파일명의 숫자
+  if (loopSet.has(p.order)) clip.loop = true;         // options.loopClips 에 지정된 번호
   if (!p.bare) clip.label = p.label || p.stem;        // 숫자뿐이면 제목 없음
   if (part === 'cctv') {
     clip.cam = p.cam || `CAM ${String((camCounter++ % 8) + 1).padStart(2, '0')}`;
@@ -146,6 +152,7 @@ const manifest = {
 };
 if (args.name) manifest.caller.name = String(args.name);
 if (cctvFrom != null) manifest.options.cctvFrom = cctvFrom;
+if (loopSet.size) manifest.options.loopClips = [...loopSet].sort((a, b) => a - b);
 
 // --if-changed : videos/ 의 구성이 그대로면 아무것도 건드리지 않습니다
 if (args['if-changed'] && Array.isArray(prev?.clips)) {
@@ -164,7 +171,8 @@ const w = String(clips.length).length;
 clips.forEach((c, i) => {
   const tag = c.part === 'cctv' ? `CCTV ${c.cam}` : 'CALL';
   const name = c.label || `(제목 없음 · ${String(c.no ?? i).padStart(2, '0')}번)`;
-  console.log(`  ${String(i).padStart(w, ' ')}. [${tag.padEnd(12)}] ${name}  ← ${c.src}`);
+  const loop = c.loop ? ' ↻ 반복' : '';
+  console.log(`  ${String(i).padStart(w, ' ')}. [${tag.padEnd(12)}] ${name}${loop}  ← ${c.src}`);
 });
 const n = clips.filter((c) => c.part === 'cctv').length;
 console.log(`\n  파트1 영상통화 ${clips.length - n}개 · 파트2 CCTV ${n}개`);

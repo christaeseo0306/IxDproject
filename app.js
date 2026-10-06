@@ -18,6 +18,8 @@ const DEFAULTS = {
     glitchMs: 700,             // CCTV 진입 글리치 길이
     showSelfInCctv: true,      // CCTV 파트에 내 카메라 썸네일 표시
     cameraOffInCctv: true,     // CCTV 파트에서는 내 카메라를 끈다 (통화로 돌아오면 다시 켬)
+    allowDrop: false,          // 첫 화면에서 영상을 끌어다 놓기 (videos/ 폴더를 쓰면 불필요)
+    loopClips: [],             // 반복 재생할 클립 번호 — 예: [0, 2]
     cctvClock: '2026-10-08T21:14:03',
     ringtone: true,
     backdrop: '',              // 창 뒤 바탕화면 이미지 (예: assets/desktop.jpg)
@@ -91,9 +93,11 @@ function numberFromSrc(src) {
 }
 
 function normalize(json, source) {
+  const opts = { ...DEFAULTS.options, ...(json.options || {}) };
+  const loopSet = new Set((opts.loopClips || []).map(Number));
   return {
     caller: { ...DEFAULTS.caller, ...(json.caller || {}) },
-    options: { ...DEFAULTS.options, ...(json.options || {}) },
+    options: opts,
     clips: (json.clips || []).map((c, i) => ({
       src: c.src || '',
       part: c.part === 'cctv' ? 'cctv' : 'call',
@@ -103,7 +107,7 @@ function normalize(json, source) {
       auto: !c.label,
       cam: c.cam || `CAM ${String((i % 8) + 1).padStart(2, '0')}`,
       location: c.location || '',
-      loop: !!c.loop,
+      loop: !!c.loop || loopSet.has(Number.isFinite(c.no) ? c.no : numberFromSrc(c.src)),
       fit: c.fit || '',
       date: c.date || '',
     })),
@@ -114,6 +118,9 @@ function normalize(json, source) {
 
 /* ══════════════ 카메라 ══════════════ */
 async function initCamera() {
+  if (S.stream && S.stream.getVideoTracks().some((t) => t.readyState === 'live')) {
+    return { ok: true };                 // 이미 켜져 있으면 그대로 씁니다
+  }
   if (!navigator.mediaDevices?.getUserMedia) {
     body.classList.add('cam-off'); S.camOn = false;
     return { ok: false, reason: 'This browser does not support the camera API.' };
@@ -484,9 +491,8 @@ function auditAudio(v, clip, gen) {
     }
     if (S.muted) return;                  // 발표자가 직접 끈 경우
     if (hasAudioTrack(v) === false && !clip.noAudio) {
-      clip.noAudio = true;                // 발표자 패널에 표시
+      clip.noAudio = true;                // 발표자 패널에만 표시합니다
       renderPresenter();
-      toast(`No audio track in '${clip.label}'`);
     }
   }, 1400);
 }
@@ -676,10 +682,12 @@ function restart(opts = {}) {
   $('#presenter').hidden = true;
   renderPresenter();
   syncCamToPart('call');
-  setState('calling');
-  $('#status-text').textContent = 'Connecting';
-  startRing();
-  if (!opts.silent) toast('Restarted');
+  stopRing();
+  setState('gate');                      // 통화를 걸기 전 화면으로
+  $('#gate').classList.add('is-on');
+  $('#gate-btn').disabled = false;
+  $('#gate-note').textContent = '';
+  updateGateNote();
 }
 
 /* ══════════════ 시계 ══════════════ */
@@ -920,12 +928,16 @@ players.forEach((v) => {
   document.documentElement.style.setProperty('--fit', S.cfg.options.fit);
 
   S.cfg.manifestClips = S.clips.slice();
-  await restoreSequence();                 // 전에 넣어둔 영상이 있으면 그대로 이어서
-  S.clips = S.cfg.clips;
+  if (S.cfg.options.allowDrop) {
+    await restoreSequence();               // 전에 넣어둔 영상이 있으면 그대로 이어서
+    S.clips = S.cfg.clips;
+  } else {
+    body.classList.add('no-drop');
+  }
 
   renderPresenter();
   updateGateNote();
-  wireDropZone();
+  if (S.cfg.options.allowDrop) wireDropZone();
   if (!S.stored) countOnDisk().then((n) => { S.found = n; updateGateNote(n); });
   setInterval(tick, 250);
 

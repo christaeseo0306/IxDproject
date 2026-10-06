@@ -94,6 +94,10 @@ body[data-backdrop] .desktop::after{
   -webkit-backdrop-filter:blur(22px);
 }
 body.dropping .drop-veil{display:flex;animation:fade .18s var(--ease)}
+body.no-drop .drop-veil,
+body.no-drop #pick-btn,
+body.no-drop .gate-hint{display:none}
+body.no-drop .gate-drop{margin-bottom:0}
 .drop-card{
   display:grid;justify-items:center;gap:.7rem;padding:3rem 4rem;border-radius:20px;
   border:2px dashed rgba(47,209,89,.6);background:rgba(47,209,89,.06);
