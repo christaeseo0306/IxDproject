@@ -18,3 +18,5 @@ videos.json
 
 # 배포 대상 저장소 주소 (각자 폴더에만 둡니다)
 .repo-url
+__pycache__/
+*.pyc

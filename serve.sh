@@ -16,4 +16,9 @@ echo "▸ Figma Slide 링크에 위 주소를 넣으세요. 종료는 Ctrl+C."
 echo
 command -v open  >/dev/null && open  "$URL" 2>/dev/null || true
 command -v xdg-open >/dev/null && xdg-open "$URL" 2>/dev/null || true
-exec python3 -m http.server "$PORT"
+# 구간 요청을 지원하는 서버 — 큰 영상도 즉시 재생되고 되감기가 빠릅니다
+if [ -f tools/serve.py ]; then
+  exec python3 tools/serve.py "$PORT"
+else
+  exec python3 -m http.server "$PORT"
+fi
