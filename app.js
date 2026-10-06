@@ -53,6 +53,7 @@ const S = {
   primed: false,
   objectUrls: [],
   stored: 0,
+  found: 0,
   audioCtx: null,
   ringTimer: null,
 };
@@ -227,15 +228,20 @@ async function saveSequence() {
       cam: c.cam, location: c.location,
     }));
   try {
-    if (!rows.length) return idbRun('readwrite', (st) => st.delete('clips'));
-    await idbRun('readwrite', (st) => st.put(rows, 'clips'));
-    S.stored = rows.length;
+    if (!rows.length) {
+      S.stored = 0;
+      await idbRun('readwrite', (st) => st.delete('clips'));
+    } else {
+      await idbRun('readwrite', (st) => st.put(rows, 'clips'));
+      S.stored = rows.length;
+    }
   } catch (err) {
     S.stored = 0;
     toast(err?.name === 'QuotaExceededError'
       ? 'Not enough browser storage — put the files in videos/ instead'
       : 'Could not save to this browser');
   }
+  updateGateNote();            // 저장 결과가 정해진 뒤에 안내를 맞춥니다
 }
 
 async function restoreSequence() {
@@ -362,21 +368,32 @@ function loadDroppedFiles(files) {
   $('#warn').hidden = true;
   S.idx = -1;
   renderPresenter();
-  updateGateNote();
   saveSequence();
   toast(`${S.clips.length} clips loaded — ${S.clips.length - n} call, ${n} CCTV`);
   return true;
 }
 
+/* 매니페스트가 가리키는 파일이 실제로 있는지 확인합니다 (본문은 받지 않습니다) */
+async function countOnDisk() {
+  const srcs = S.clips.map((c) => c.src).filter((x) => x && !x.startsWith('blob:'));
+  if (!srcs.length) return 0;
+  const hits = await Promise.all(srcs.map((src) =>
+    fetch(src, { method: 'HEAD' }).then((r) => r.ok).catch(() => false)));
+  return hits.filter(Boolean).length;
+}
+
 /* 재생 목록이 바뀌면 화면 안내도 같이 갱신합니다 */
-function updateGateNote() {
+function updateGateNote(playable = S.found) {
   const el = $('#gate-ready');
   if (!el) return;
   if (S.stored) {
-    el.textContent = `${S.stored} videos saved in this browser — ready to go`;
+    el.textContent = `${S.stored} videos ready — saved in this browser`;
+    el.classList.add('is-ready');
+  } else if (playable) {
+    el.textContent = `${playable} videos ready — from the videos folder`;
     el.classList.add('is-ready');
   } else {
-    el.textContent = 'or drag your video files here';
+    el.textContent = 'No videos yet';
     el.classList.remove('is-ready');
   }
 }
@@ -813,7 +830,17 @@ document.addEventListener('keydown', (e) => {
 });
 
 /* ══════════════ 포인터 ══════════════ */
-$('#gate').addEventListener('click', () => { if (!$('#gate-btn').disabled) startCalling(); });
+$('#gate').addEventListener('click', (e) => {
+  if (e.target.closest('#pick-btn') || e.target.closest('#file-input')) return;
+  if (!$('#gate-btn').disabled) startCalling();
+});
+$('#pick-btn').addEventListener('click', (e) => { e.stopPropagation(); $('#file-input').click(); });
+$('#file-input').addEventListener('click', (e) => e.stopPropagation());
+$('#file-input').addEventListener('change', (e) => {
+  const files = [...e.target.files].filter((f) => VIDEO_RE.test(f.name));
+  loadDroppedFiles(files);
+  e.target.value = '';                       // 같은 파일을 다시 골라도 동작하도록
+});
 
 $('#window').addEventListener('click', (e) => {
   if (e.target.closest('.controls') || e.target.closest('.ended')) return;
@@ -878,6 +905,7 @@ players.forEach((v) => {
   renderPresenter();
   updateGateNote();
   wireDropZone();
+  if (!S.stored) countOnDisk().then((n) => { S.found = n; updateGateNote(n); });
   setInterval(tick, 250);
 
   const warns = [];
