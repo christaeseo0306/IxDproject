@@ -1,7 +1,8 @@
 # 발표 당일 체크리스트
 
 ## 10분 전
-1. `start.command` 더블클릭 (또는 `./serve.sh`) → `http://localhost:8000` 열림 확인
+1. `start.command` 더블클릭 (또는 터미널에서 `bash serve.sh`) → `http://localhost:8000` 열림 확인
+   - "Apple could not verify…" 경고가 뜨면 `Done` → 터미널에서 `bash serve.sh` 로 실행
 2. `H` → 발표자 패널에서 클립 순서·파트 확인 (빨간 글씨 = 파일 못 찾음)
 3. 시스템 설정에서 카메라 권한 허용, 다른 앱(Zoom 등)이 카메라를 점유하지 않는지 확인
 4. 음량 확인 — 첫 화면 클릭해야 소리가 납니다
