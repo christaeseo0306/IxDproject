@@ -60,12 +60,32 @@ Figma Slide의 도형/텍스트에 하이퍼링크로 `http://localhost:8000` �
 
 발표 전 체크: 노트북에서 `./serve.sh` 를 띄워두고 → 슬라이드쇼 실행 → 링크 클릭 → 새 탭에서 열림.
 
-### 대안 — GitHub Pages
+### 웹사이트로 만들기 — 영상까지 올려서 한 번에
 
-Settings → Pages → Branch: `claude/dazzling-albattani-vi1z0v` / `/ (root)` 로 배포하면
-`https://<계정>.github.io/IxDproject/` 로 접속됩니다. HTTPS라 카메라도 동작합니다.
-다만 깃허브는 **파일당 100MB** 제한이 있으니 영상을 미리 압축해야 하고,
-발표장 네트워크에 의존하게 됩니다. 백업 경로로만 쓰는 것을 권합니다.
+주소만 열면 바로 재생되는 웹사이트로 만들려면, 영상도 저장소에 함께 올려야 합니다.
+명령 하나면 됩니다.
+
+```bash
+./tools/publish.sh
+```
+
+압축 → 재생 목록 갱신 → 용량 점검 → 커밋 → 푸시까지 한 번에 합니다.
+끝나면 Pages 켜는 주소와 접속 주소를 알려줍니다. 처음 한 번만 Pages 를 켜주세요.
+
+```
+Settings → Pages → Source: Deploy from a branch
+                 → Branch: (현재 브랜치) / (root) → Save
+```
+
+1~2분 뒤 `https://<계정>.github.io/IxDproject/` 로 들어가면 **영상이 바로 재생됩니다.**
+이 주소를 Figma Slide 링크에 넣으면, 그 뒤로는 영상을 다시 넣을 일이 없습니다.
+팀원들도 주소만 열면 됩니다.
+
+영상을 바꾸거나 추가한 뒤에는 `./tools/publish.sh` 를 다시 돌리면 됩니다.
+
+> GitHub 은 파일당 100MB 제한이 있어 스크립트가 미리 점검합니다. 걸리면
+> `./tools/compress.sh 720` 으로 더 줄이면 됩니다.
+> 발표장 네트워크가 불안하면 로컬(`start.command`)을 백업으로 함께 준비하세요.
 
 ---
 
