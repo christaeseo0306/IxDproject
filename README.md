@@ -269,6 +269,7 @@ ENDED         통화 시간과 함께 종료
     "fit": "cover",            // cover(꽉 채움) | contain(레터박스)
     "glitchMs": 700,           // CCTV 진입 글리치 길이
     "showSelfInCctv": true,    // CCTV 화면에 내 카메라 썸네일
+    "cameraOffInCctv": true,   // CCTV 파트에서 내 카메라를 끈다
     "cctvClock": "2026-10-08T21:14:03",  // CCTV 타임스탬프 시작 시각
     "cctvFrom": 5,             // 몇 번 영상부터 CCTV 파트인지 (빌더가 기억)
     "ringtone": true,          // 발신음

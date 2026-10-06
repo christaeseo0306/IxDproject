@@ -17,6 +17,7 @@ const DEFAULTS = {
     fit: 'cover',              // cover | contain
     glitchMs: 700,             // CCTV 진입 글리치 길이
     showSelfInCctv: true,      // CCTV 파트에 내 카메라 썸네일 표시
+    cameraOffInCctv: true,     // CCTV 파트에서는 내 카메라를 끈다 (통화로 돌아오면 다시 켬)
     cctvClock: '2026-10-08T21:14:03',
     ringtone: true,
     backdrop: '',              // 창 뒤 바탕화면 이미지 (예: assets/desktop.jpg)
@@ -53,6 +54,7 @@ const S = {
   primed: false,
   objectUrls: [],
   stored: 0,
+  autoCamOff: false,
   found: 0,
   audioCtx: null,
   ringTimer: null,
@@ -137,12 +139,28 @@ async function initCamera() {
   }
 }
 
+function setCam(on) {
+  if (!S.stream) return;
+  S.camOn = on;
+  S.stream.getVideoTracks().forEach((t) => { t.enabled = on; });
+  body.classList.toggle('cam-off', !on);
+  $('#btn-cam').classList.toggle('is-off', !on);
+}
+
 function toggleCam() {
   if (!S.stream) return toast('Camera unavailable');
-  S.camOn = !S.camOn;
-  S.stream.getVideoTracks().forEach((t) => { t.enabled = S.camOn; });
-  body.classList.toggle('cam-off', !S.camOn);
-  $('#btn-cam').classList.toggle('is-off', !S.camOn);
+  S.autoCamOff = false;            // 직접 끈 것은 자동 복구하지 않습니다
+  setCam(!S.camOn);
+}
+
+/* CCTV 파트에서는 카메라를 끄고, 통화 파트로 돌아오면 다시 켭니다 */
+function syncCamToPart(part) {
+  if (!S.stream || !S.cfg.options.cameraOffInCctv) return;
+  if (part === 'cctv') {
+    if (S.camOn) { S.autoCamOff = true; setCam(false); }
+  } else if (S.autoCamOff) {
+    S.autoCamOff = false; setCam(true);
+  }
 }
 
 function toggleMute() {
@@ -570,6 +588,7 @@ async function goto(i, opts = {}) {
     body.classList.remove('ui-visible');
     body.classList.add('hide-cursor');
   }
+  syncCamToPart(clip.part);
   bodyPart(clip);
   $('#glitch').hidden = true;
   setPlaceholder(clip, i, failed);
@@ -611,6 +630,7 @@ async function startCalling() {
   const cam = await initCamera();
   await primeMedia();                     // 제스처가 살아 있는 동안 소리 잠금 해제
   $('#gate').classList.remove('is-on');
+  syncCamToPart('call');
   setState('calling');
   $('#status-text').textContent = 'Connecting';
   if (!cam.ok) toast(cam.reason);
@@ -655,6 +675,7 @@ function restart(opts = {}) {
   body.classList.remove('ui-visible', 'hide-cursor');
   $('#presenter').hidden = true;
   renderPresenter();
+  syncCamToPart('call');
   setState('calling');
   $('#status-text').textContent = 'Connecting';
   startRing();
