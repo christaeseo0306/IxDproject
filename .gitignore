@@ -5,3 +5,6 @@ videos/*
 
 # 실제 재생 목록은 각자 로컬에서 생성합니다 (videos.sample.json 이 템플릿)
 videos.json
+
+# 전달용 패키징 산출물
+*.zip
