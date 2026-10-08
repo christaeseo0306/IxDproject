@@ -9,6 +9,7 @@
 import os
 import re
 import sys
+import webbrowser
 from functools import partial
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -109,16 +110,46 @@ class _Slice:
         self.fp.close()
 
 
-def main():
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
-    root = sys.argv[2] if len(sys.argv) > 2 else os.getcwd()
-    handler = partial(RangeHandler, directory=root)
-    with ThreadingHTTPServer(("127.0.0.1", port), handler) as httpd:
-        httpd.daemon_threads = True
+def pick_port(want):
+    """비어 있는 포트에 자리를 잡고 서버를 돌려줍니다."""
+    handler = partial(RangeHandler, directory=os.getcwd())
+    last = None
+    for port in range(want, want + 40):
         try:
-            httpd.serve_forever()
-        except KeyboardInterrupt:
-            print("\n서버를 종료합니다.")
+            httpd = ThreadingHTTPServer(("127.0.0.1", port), handler)
+        except OSError as err:
+            last = err
+            continue
+        return httpd, port
+    raise SystemExit(f"✗ {want}~{want + 39} 번 포트를 모두 쓸 수 없습니다. ({last})")
+
+
+def main():
+    arg = sys.argv[1] if len(sys.argv) > 1 else ""
+    want = int(arg) if arg.strip().isdigit() else 8000
+
+    httpd, port = pick_port(want)
+    httpd.daemon_threads = True
+    url = f"http://localhost:{port}/"
+
+    if port != want:
+        print(f"⚠ {want} 번 포트를 다른 프로그램이 쓰고 있어 {port} 번으로 띄웁니다.")
+    print()
+    print(f"▸ {url}")
+    print("▸ Figma Slide 링크에 위 주소를 넣으세요. 종료는 Ctrl+C.")
+    print()
+
+    try:
+        webbrowser.open(url)
+    except Exception:
+        pass
+
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        print("\n서버를 종료합니다.")
+    finally:
+        httpd.server_close()
 
 
 if __name__ == "__main__":
