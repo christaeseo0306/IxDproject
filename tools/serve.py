@@ -126,18 +126,25 @@ def pick_port(want):
 
 def main():
     arg = sys.argv[1] if len(sys.argv) > 1 else ""
-    want = int(arg) if arg.strip().isdigit() else 8000
+    want = int(arg) if arg.strip().isdigit() else 7777
 
     httpd, port = pick_port(want)
     httpd.daemon_threads = True
     url = f"http://localhost:{port}/"
 
     if port != want:
-        print(f"⚠ {want} 번 포트를 다른 프로그램이 쓰고 있어 {port} 번으로 띄웁니다.")
-    print()
-    print(f"▸ {url}")
-    print("▸ Figma Slide 링크에 위 주소를 넣으세요. 종료는 Ctrl+C.")
-    print()
+        print(f"\n⚠ {want} 번 포트를 다른 프로그램이 쓰고 있어 {port} 번으로 띄웁니다.")
+    bar = "─" * 46
+    print(f"""
+┌{bar}┐
+   브라우저 주소창에 이 주소가 맞는지 확인하세요
+
+       {url}
+
+   다른 주소가 열렸으면 위 주소를 직접 입력하세요.
+   종료는 이 창에서 Control + C
+└{bar}┘
+""")
 
     try:
         webbrowser.open(url)

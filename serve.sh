@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 로컬 서버 실행 — http://localhost 은 보안 컨텍스트라 카메라가 정상 동작합니다.
-#   bash serve.sh          # 8000 번부터 비어 있는 포트를 찾아 띄웁니다
+#   bash serve.sh          # 7777 번부터 비어 있는 포트를 찾아 띄웁니다
 #   bash serve.sh 8777     # 포트 지정
 cd "$(dirname "$0")" || exit 1
 
