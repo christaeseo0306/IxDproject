@@ -859,16 +859,8 @@ document.addEventListener('keydown', (e) => {
 });
 
 /* ══════════════ 포인터 ══════════════ */
-$('#gate').addEventListener('click', (e) => {
-  if (e.target.closest('#pick-btn') || e.target.closest('#file-input')) return;
+$('#gate').addEventListener('click', () => {
   if (!$('#gate-btn').disabled) startCalling();
-});
-$('#pick-btn').addEventListener('click', (e) => { e.stopPropagation(); $('#file-input').click(); });
-$('#file-input').addEventListener('click', (e) => e.stopPropagation());
-$('#file-input').addEventListener('change', (e) => {
-  const files = [...e.target.files].filter((f) => VIDEO_RE.test(f.name));
-  loadDroppedFiles(files);
-  e.target.value = '';                       // 같은 파일을 다시 골라도 동작하도록
 });
 
 $('#window').addEventListener('click', (e) => {
