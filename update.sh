@@ -13,7 +13,7 @@ URL="https://github.com/christaeseo0306/IxDproject/archive/refs/heads/${BRANCH}.
 echo "▸ 최신 코드를 받는 중…"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
-if curl -fsSL --max-time 20 "$URL" | tar xz -C "$tmp" --strip-components=1 2>/dev/null; then
+if curl -fsL --max-time 20 "$URL" | tar xz -C "$tmp" --strip-components=1 2>/dev/null; then
   UPDATED=1
 else
   UPDATED=0
