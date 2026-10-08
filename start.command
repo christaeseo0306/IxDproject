@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-# 더블클릭하면 터미널이 열리며 서버가 뜹니다.
-# 터미널에서는: bash start.command  (파일을 터미널 창으로 끌어다 놓아도 됩니다)
-cd "$(dirname "$0")"
-exec bash serve.sh "${1:-8000}"
+# 더블클릭하면 최신 코드로 맞춘 뒤 서버를 띄웁니다.
+# 인터넷이 안 되면 지금 폴더에 있는 것으로 그냥 실행합니다.
+cd "$(dirname "$0")" || exit 1
+xattr -dr com.apple.quarantine . 2>/dev/null || true   # 다음부터는 경고 없이 열립니다
+if [ -f update.sh ]; then
+  exec bash update.sh "$@"
+fi
+exec bash serve.sh "$@"
