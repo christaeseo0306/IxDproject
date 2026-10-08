@@ -126,12 +126,15 @@ body.is-full .window{
 .stage{position:absolute;inset:0;background:#000}
 
 /* 준비한 영상 */
+/* 클립 전환은 자르기(cut)입니다. 페이드를 쓰면 두 영상이 함께 투명해지는
+   구간이 생겨 화면이 한 번 어두워집니다. 대신 나가는 영상을 잠깐 뒤에
+   남겨 두어, 들어오는 영상의 첫 프레임이 늦어도 검은 화면이 보이지 않습니다. */
 .clip{
   position:absolute;inset:0;width:100%;height:100%;
-  object-fit:var(--fit,cover);opacity:0;
-  transition:opacity .2s linear;pointer-events:none;
+  object-fit:var(--fit,cover);opacity:0;pointer-events:none;z-index:1;
 }
-.clip.is-active{opacity:1}
+.clip.is-active{opacity:1;z-index:2}
+.clip.is-outgoing{opacity:1;z-index:1}
 .clip::-webkit-media-controls{display:none!important}
 body[data-state="calling"] .clip,
 body[data-state="ended"] .clip{opacity:0}

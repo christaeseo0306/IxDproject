@@ -579,10 +579,13 @@ async function goto(i, opts = {}) {
     auditAudio(next, clip, gen);
   }
 
-  // 비디오 교체
-  players[S.cur].classList.remove('is-active');
+  // 비디오 교체 — 자르기. 나가는 영상은 잠깐 뒤에 남겨 검은 프레임을 막습니다
+  const prev = players[S.cur];
+  prev.classList.remove('is-active');
+  prev.classList.add('is-outgoing');
   next.classList.add('is-active');
-  if (!players[S.cur].paused) players[S.cur].pause();
+  if (!prev.paused) prev.pause();
+  setTimeout(() => { prev.classList.remove('is-outgoing'); }, 220);
   S.cur = 1 - S.cur;
   S.idx = i;
   S.clipStartAt = Date.now();
@@ -666,7 +669,7 @@ function endCall() {
 function restart(opts = {}) {
   S.idx = -1; S.callStart = 0; S.gen++;
   players.forEach((v) => {
-    v.classList.remove('is-active');
+    v.classList.remove('is-active', 'is-outgoing');
     v.pause();
     v.removeAttribute('src'); delete v.dataset.src; v.load();
   });
